@@ -1,2 +1,3 @@
 src/client/parallelClients.sh
 src/server/runServer.sh
+src/proto/recompile.sh

@@ -1,6 +1,22 @@
 package utils
 
-import "math"
+import (
+	"math"
+	"time"
+)
+
+const Step = 25
+
+func SimulatedCPUIntensiveFunction(baseDurationMillis float64, active *int, multiplier int) {
+
+	var counter float64
+
+	for counter < baseDurationMillis {
+		time.Sleep(Step * time.Millisecond)
+		counter += Step / (float64(*active) * float64(multiplier))
+	}
+
+}
 
 func DummyCPUIntensiveFunction(iterations int) float64 {
 	result := 0.0

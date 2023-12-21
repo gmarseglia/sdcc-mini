@@ -9,6 +9,7 @@ import (
 	pb "mini/proto"
 	"mini/utils"
 	"net"
+	"time"
 
 	"google.golang.org/grpc"
 )
@@ -18,6 +19,7 @@ var (
 	port    = flag.Int("port", 55555, "The server port")
 	seed    = flag.Int("seed", 14, "The seed for the PRNG")
 	counter = 0
+	active  = 0
 )
 
 // build the PRNG
@@ -32,13 +34,20 @@ type server struct {
 
 // SayHello implements helloworld.GreeterServer
 func (s *server) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
+	// signal as activated
+	active += 1
+
 	// log response
 	counter += 1
-	log.Printf("Received #%d:(%s, %s, %d)", counter, in.GetOption1(), in.GetOption2(), in.GetMillis())
+	replyID := counter
+	log.Printf("Received #%d:(%s, %s)", counter, in.GetOption1(), in.GetOption2())
 
 	// sleep
-	// time.Sleep(time.Duration(in.GetMillis()) * time.Millisecond)
-	utils.DummyCPUIntensiveFunction(int(in.GetMillis()) * 2500)
+	utils.SimulatedCPUIntensiveFunction(1000, &active, 1)
+
+	// signal as deactivated
+	active -= 1
+	log.Printf("*active: %d", active)
 
 	// randomly choose response
 	var response string
@@ -49,7 +58,18 @@ func (s *server) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Choice
 	}
 
 	// send response
-	return &pb.ChoiceReply{Option: response}, nil
+	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
+}
+
+func debugActive() {
+	lastActive := -1
+	for {
+		if active != lastActive {
+			lastActive = active
+			log.Printf("*active: %d", active)
+			time.Sleep(utils.Step * 2)
+		}
+	}
 }
 
 func main() {
@@ -68,6 +88,9 @@ func main() {
 	// register the server
 	pb.RegisterMiniServer(s, &server{})
 	log.Printf("server listening at %v", lis.Addr())
+
+	// start debugging active level
+	go debugActive()
 
 	// serve the request
 	if err := s.Serve(lis); err != nil {

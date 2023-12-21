@@ -7,12 +7,12 @@ package mini;
 
 message ChoiceBiRequest {
         string Option1 = 1;
-        string Option2 = 2; 
-        int32 Millis = 3;
+        string Option2 = 2;
     }
 
 message ChoiceReply {
     string Option = 1;
+    int32 ReplyID = 2;
 }
 
 service Mini {

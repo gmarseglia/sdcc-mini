@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	timeout = 5 * time.Second
+	timeout = 60 * time.Second
 )
 
 var (
@@ -42,11 +42,11 @@ func main() {
 	startTime := time.Now()
 
 	// contact the server
-	r, err := c.Choice(ctx, &pb.ChoiceBiRequest{Option1: "uno", Option2: "due", Millis: 1000})
+	r, err := c.Choice(ctx, &pb.ChoiceBiRequest{Option1: "A", Option2: "B"})
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
 
 	// print the result
-	log.Printf("Respone: %s; Time spent: %d ms", r.GetOption(), time.Since(startTime).Milliseconds())
+	log.Printf("Respone: (#%d,%s); Time spent: %d ms", r.GetReplyID(), r.GetOption(), time.Since(startTime).Milliseconds())
 }
