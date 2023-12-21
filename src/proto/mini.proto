@@ -1,0 +1,20 @@
+
+syntax = "proto3";
+
+option go_package = "mini/proto";
+
+package mini;
+
+message ChoiceBiRequest {
+        string Option1 = 1;
+        string Option2 = 2; 
+        int32 Millis = 3;
+    }
+
+message ChoiceReply {
+    string Option = 1;
+}
+
+service Mini {
+    rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
+}
