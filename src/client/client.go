@@ -1,7 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"mini/utils"
+)
 
 func main() {
 	fmt.Println("I'm the client")
+	fmt.Println(utils.UtilHello())
 }
