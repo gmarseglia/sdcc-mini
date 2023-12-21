@@ -38,6 +38,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	// time the call
+	startTime := time.Now()
+
 	// contact the server
 	r, err := c.Choice(ctx, &pb.ChoiceBiRequest{Option1: "uno", Option2: "due", Millis: 1000})
 	if err != nil {
@@ -45,5 +48,5 @@ func main() {
 	}
 
 	// print the result
-	log.Printf("Greeting: %s", r.GetOption())
+	log.Printf("Respone: %s; Time spent: %d ms", r.GetOption(), time.Since(startTime).Milliseconds())
 }

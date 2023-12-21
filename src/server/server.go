@@ -7,16 +7,17 @@ import (
 	"log"
 	"math/rand"
 	pb "mini/proto"
+	"mini/utils"
 	"net"
-	"time"
 
 	"google.golang.org/grpc"
 )
 
 // define flags
 var (
-	port = flag.Int("port", 55555, "The server port")
-	seed = flag.Int("seed", 14, "The seed for the PRNG")
+	port    = flag.Int("port", 55555, "The server port")
+	seed    = flag.Int("seed", 14, "The seed for the PRNG")
+	counter = 0
 )
 
 // build the PRNG
@@ -32,10 +33,12 @@ type server struct {
 // SayHello implements helloworld.GreeterServer
 func (s *server) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
 	// log response
-	log.Printf("Received: options:(%s, %s), sleep: %d", in.GetOption1(), in.GetOption2(), in.GetMillis())
+	counter += 1
+	log.Printf("Received #%d:(%s, %s, %d)", counter, in.GetOption1(), in.GetOption2(), in.GetMillis())
 
 	// sleep
-	time.Sleep(time.Duration(in.GetMillis()) * time.Millisecond)
+	// time.Sleep(time.Duration(in.GetMillis()) * time.Millisecond)
+	utils.DummyCPUIntensiveFunction(int(in.GetMillis()) * 2500)
 
 	// randomly choose response
 	var response string

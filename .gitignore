@@ -1,1 +1,2 @@
 src/client/parallelClients.sh
+src/server/runServer.sh
