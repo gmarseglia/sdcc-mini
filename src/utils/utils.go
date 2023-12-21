@@ -12,8 +12,8 @@ func SimulatedCPUIntensiveFunction(baseDurationMillis float64, active *int, mult
 	var counter float64
 
 	for counter < baseDurationMillis {
-		time.Sleep(Step * time.Millisecond)
 		counter += Step / (float64(*active) * float64(multiplier))
+		time.Sleep(Step * time.Millisecond)
 	}
 
 }
