@@ -16,10 +16,11 @@ import (
 
 // define flags
 var (
-	port    = flag.Int("port", 55555, "The server port")
-	seed    = flag.Int("seed", 14, "The seed for the PRNG")
-	counter = 0
-	active  = 0
+	frontPort  = flag.Int("frontPort", 55555, "The server port for front service")
+	masterPort = flag.Int("masterPort", 55556, "The server port for master service")
+	seed       = flag.Int("seed", 14, "The seed for the PRNG")
+	counter    = 0
+	active     = 0
 )
 
 // build the PRNG
@@ -27,15 +28,15 @@ var (
 	Prng = rand.New(rand.NewSource(int64(*seed)))
 )
 
-// frontServer is used to implement the MiniServer interface
-type frontServer struct {
+// FrontServer is used to implement the MiniServer interface
+type FrontServer struct {
 	pb.UnimplementedFrontServer
 }
 
 // SayHello implements helloworld.GreeterServer
-func (s *frontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
+func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
 	// signal as activated
-	active += 1
+	Active += 1
 
 	// log response
 	counter += 1
@@ -43,10 +44,10 @@ func (s *frontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 	log.Printf("Received #%d:(%s, %s)", counter, in.GetOption1(), in.GetOption2())
 
 	// sleep
-	utils.SimulatedCPUIntensiveFunction(1000, &active, 1)
+	utils.SimulatedCPUIntensiveFunction(1000, &Active, 1)
 
 	// signal as deactivated
-	active -= 1
+	Active -= 1
 
 	// randomly choose response
 	var response string
@@ -60,21 +61,30 @@ func (s *frontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
 }
 
+type masterServer struct {
+	pb.UnimplementedMasterServer
+}
+
+// SayHello implements helloworld.GreeterServer
+func (s *masterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequest) (*pb.NotifyReply, error) {
+	log.Printf("Notification from %s", in.GetWorkerAddress())
+
+	// send response
+	return &pb.NotifyReply{Result: "OK"}, nil
+}
+
 func debugActive() {
 	lastActive := -1
 	for {
-		if active != lastActive {
-			lastActive = active
-			log.Printf("*active: %d", active)
+		if Active != lastActive {
+			lastActive = Active
+			log.Printf("*active: %d", Active)
 			time.Sleep(utils.Step * 2)
 		}
 	}
 }
 
-func main() {
-	// parse the flags for CLI
-	flag.Parse()
-
+func activateFrontServer(port *int) {
 	// listen to request to specified port
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
@@ -85,8 +95,8 @@ func main() {
 	s := grpc.NewServer()
 
 	// register the server
-	pb.RegisterFrontServer(s, &frontServer{})
-	log.Printf("server listening at %v", lis.Addr())
+	pb.RegisterFrontServer(s, &FrontServer{})
+	log.Printf("Front server listening at %v", lis.Addr())
 
 	// start debugging active level
 	go debugActive()
@@ -95,4 +105,35 @@ func main() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+}
+
+func activateMasterServer(port *int) {
+	// listen to request to specified port
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	// create a new server
+	s := grpc.NewServer()
+
+	// register the server
+	pb.RegisterMasterServer(s, &masterServer{})
+	log.Printf("Master server listening at %v", lis.Addr())
+
+	// serve the request
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
+func main() {
+	// parse the flags for CLI
+	flag.Parse()
+
+	go activateMasterServer(masterPort)
+	time.Sleep(time.Millisecond * 10)
+
+	activateFrontServer(frontPort)
+
 }
