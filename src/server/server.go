@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	pb "mini/proto/cs"
+	pb "mini/proto"
 	"mini/utils"
 	"net"
 	"time"
@@ -27,13 +27,13 @@ var (
 	Prng = rand.New(rand.NewSource(int64(*seed)))
 )
 
-// server is used to implement the MiniServer interface
-type server struct {
-	pb.UnimplementedMiniServer
+// frontServer is used to implement the MiniServer interface
+type frontServer struct {
+	pb.UnimplementedFrontServer
 }
 
 // SayHello implements helloworld.GreeterServer
-func (s *server) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
+func (s *frontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
 	// signal as activated
 	active += 1
 
@@ -85,7 +85,7 @@ func main() {
 	s := grpc.NewServer()
 
 	// register the server
-	pb.RegisterMiniServer(s, &server{})
+	pb.RegisterFrontServer(s, &frontServer{})
 	log.Printf("server listening at %v", lis.Addr())
 
 	// start debugging active level

@@ -1,4 +1,4 @@
-module mini/proto/cs
+module mini/proto
 
 go 1.21.5
 

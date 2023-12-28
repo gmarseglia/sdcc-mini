@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "mini/proto/cs"
+	pb "mini/proto"
 )
 
 const (
@@ -32,7 +32,7 @@ func main() {
 	defer conn.Close()
 
 	// create the client object
-	c := pb.NewMiniClient(conn)
+	c := pb.NewFrontClient(conn)
 
 	// create the context
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)

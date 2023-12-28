@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option go_package = "mini/proto";
+
+package mini;
+
+message ChoiceBiRequest {
+        string Option1 = 1;
+        string Option2 = 2;
+    }
+
+message ChoiceReply {
+    string Option = 1;
+    int32 ReplyID = 2;
+}
+
+message NotifyRequest {
+        string WorkerAddress = 1;
+    }
+
+message NotifyReply {
+    string Result = 1;
+}
+
+service Front {
+    rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
+}
+
+service Back {
+    rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
+}
+
+service Master {
+    rpc NotifyActiveWorker(NotifyRequest) returns (NotifyReply) {}
+    rpc NotifyDeactiveWorker(NotifyRequest) returns (NotifyReply) {}
+}
