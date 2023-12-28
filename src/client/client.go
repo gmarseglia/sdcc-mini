@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "mini/proto"
+	pb "mini/proto/cs"
 )
 
 const (

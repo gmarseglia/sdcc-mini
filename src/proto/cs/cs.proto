@@ -1,7 +1,6 @@
-
 syntax = "proto3";
 
-option go_package = "mini/proto";
+option go_package = "mini/proto/cs";
 
 package mini;
 

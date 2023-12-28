@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	pb "mini/proto"
+	pb "mini/proto/cs"
 	"mini/utils"
 	"net"
 	"time"
@@ -47,7 +47,6 @@ func (s *server) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Choice
 
 	// signal as deactivated
 	active -= 1
-	log.Printf("*active: %d", active)
 
 	// randomly choose response
 	var response string
