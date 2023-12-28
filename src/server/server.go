@@ -36,7 +36,7 @@ type FrontServer struct {
 // SayHello implements helloworld.GreeterServer
 func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
 	// signal as activated
-	Active += 1
+	active += 1
 
 	// log response
 	counter += 1
@@ -44,10 +44,10 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 	log.Printf("Received #%d:(%s, %s)", counter, in.GetOption1(), in.GetOption2())
 
 	// sleep
-	utils.SimulatedCPUIntensiveFunction(1000, &Active, 1)
+	utils.SimulatedCPUIntensiveFunction(1000, &active, 1)
 
 	// signal as deactivated
-	Active -= 1
+	active -= 1
 
 	// randomly choose response
 	var response string
@@ -76,9 +76,9 @@ func (s *masterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequ
 func debugActive() {
 	lastActive := -1
 	for {
-		if Active != lastActive {
-			lastActive = Active
-			log.Printf("*active: %d", Active)
+		if active != lastActive {
+			lastActive = active
+			log.Printf("*active: %d", active)
 			time.Sleep(utils.Step * 2)
 		}
 	}
