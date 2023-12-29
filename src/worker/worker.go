@@ -9,6 +9,7 @@ import (
 	pb "mini/proto"
 	"mini/utils"
 	"net"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -22,7 +23,9 @@ var (
 	workerPort        int
 	workerListener    net.Listener
 	active            int
+	activeChannel     = make(chan int, 1000)
 	counter           int
+	counterLock       sync.Mutex
 	Prng              = rand.New(rand.NewSource(14))
 )
 
@@ -74,17 +77,17 @@ type backServer struct {
 func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
 	// signal as activated
 	active += 1
+	activeChannel <- active
 
 	// log response
+	counterLock.Lock()
 	counter += 1
 	replyID := counter
+	counterLock.Unlock()
 	log.Printf("Received #%d:(%s, %s)", counter, in.GetOption1(), in.GetOption2())
 
 	// sleep
 	utils.SimulatedCPUIntensiveFunction(1000, &active, 1)
-
-	// signal as deactivated
-	active -= 1
 
 	// randomly choose response
 	var response string
@@ -94,18 +97,17 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 		response = in.GetOption2()
 	}
 
+	// signal as deactivated
+	active -= 1
+	activeChannel <- active
+
 	// send response
 	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
 }
 
 func debugActive() {
-	lastActive := -1
-	for {
-		if active != lastActive {
-			lastActive = active
-			log.Printf("*active: %d", active)
-			time.Sleep(utils.Step * 2)
-		}
+	for active := range activeChannel {
+		log.Printf("*active: %d", active)
 	}
 }
 
