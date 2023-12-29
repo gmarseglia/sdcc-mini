@@ -15,9 +15,8 @@ import (
 )
 
 var (
-	counter       int
-	workerCounter int
-	counterLock   sync.Mutex
+	counter     int
+	counterLock sync.Mutex
 )
 
 // FrontServer is used to implement the MiniServer interface
@@ -37,19 +36,8 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 	log.Printf("Request #%d started.", id)
 
 	for {
-		var addr string
-
-		// circular workerCounter
-		master.WorkerListLock.RLock()
-		if len(master.WorkerList) == 0 {
-			master.WorkerListLock.RUnlock()
-			time.Sleep(time.Second * 1)
-			continue
-		} else {
-			workerCounter = (workerCounter + 1) % len(master.WorkerList)
-			addr = master.WorkerList[workerCounter]
-			master.WorkerListLock.RUnlock()
-		}
+		// get workerr
+		addr := master.GetWorker()
 
 		// Set up a connection to the gRPC server
 		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -72,16 +60,10 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 		WorkerResponse, err := c.Choice(ctxInternal, in)
 		if err != nil {
 			log.Printf("could not greet: %v", err)
-			// delete worker address
-			master.WorkerListLock.Lock()
-			for i, v := range master.WorkerList {
-				if v == addr {
-					master.WorkerList = append(master.WorkerList[:i], master.WorkerList[i+1:]...)
-				}
-			}
-			master.WorkerListLock.Unlock()
+			master.RemoveWorker(addr)
 			continue
 		}
+
 		log.Printf("Response: (#%d/%d,%s); Time spent: %d ms", WorkerResponse.GetReplyID(), id, WorkerResponse.GetOption(), time.Since(startTime).Milliseconds())
 
 		// send response

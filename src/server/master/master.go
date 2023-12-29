@@ -7,6 +7,7 @@ import (
 	pb "mini/proto"
 	"net"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 )
@@ -14,6 +15,7 @@ import (
 var (
 	WorkerListLock sync.RWMutex
 	WorkerList     []string
+	workerCounter  int
 )
 
 type MasterServer struct {
@@ -24,23 +26,53 @@ type MasterServer struct {
 func (s *MasterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequest) (*pb.NotifyReply, error) {
 	log.Printf("Notification from %s", in.GetWorkerAddress())
 
-	// lock the WorkerList
+	// Add worker
+	resultMessage := AddWorker(in.GetWorkerAddress())
+
+	// send response
+	return &pb.NotifyReply{Result: resultMessage}, nil
+}
+
+func AddWorker(targetWorkerAddr string) string {
 	// check if worker already active
 	WorkerListLock.RLock()
 	for _, v := range WorkerList {
-		if v == in.GetWorkerAddress() {
-			return &pb.NotifyReply{Result: "ALREADY ADDED"}, nil
+		if v == targetWorkerAddr {
+			return "ALREADY ADDED"
 		}
 	}
 	WorkerListLock.RUnlock()
 
 	// append worker to active list
 	WorkerListLock.Lock()
-	WorkerList = append(WorkerList, in.GetWorkerAddress())
+	WorkerList = append(WorkerList, targetWorkerAddr)
 	WorkerListLock.Unlock()
 
-	// send response
-	return &pb.NotifyReply{Result: "OK"}, nil
+	return "OK"
+}
+
+func RemoveWorker(targetWorkerAddr string) {
+	// delete worker address
+	WorkerListLock.Lock()
+	for i, v := range WorkerList {
+		if v == targetWorkerAddr {
+			WorkerList = append(WorkerList[:i], WorkerList[i+1:]...)
+		}
+	}
+	WorkerListLock.Unlock()
+}
+
+func GetWorker() string {
+	for len(WorkerList) == 0 {
+		time.Sleep(time.Second * 1)
+	}
+	WorkerListLock.RLock()
+	// circular workerCounter
+	workerCounter = (workerCounter + 1) % len(WorkerList)
+	addr := WorkerList[workerCounter]
+	WorkerListLock.RUnlock()
+
+	return addr
 }
 
 func ActivateMasterServer(port *int) {
