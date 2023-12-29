@@ -16,6 +16,7 @@ var (
 	WorkerListLock sync.RWMutex
 	WorkerList     []string
 	workerCounter  int
+	workerChannel  = make(chan int, 1000)
 )
 
 type MasterServer struct {
@@ -46,6 +47,7 @@ func AddWorker(targetWorkerAddr string) string {
 	// append worker to active list
 	WorkerListLock.Lock()
 	WorkerList = append(WorkerList, targetWorkerAddr)
+	workerChannel <- len(WorkerList)
 	WorkerListLock.Unlock()
 
 	return "OK"
@@ -57,6 +59,7 @@ func RemoveWorker(targetWorkerAddr string) {
 	for i, v := range WorkerList {
 		if v == targetWorkerAddr {
 			WorkerList = append(WorkerList[:i], WorkerList[i+1:]...)
+			workerChannel <- len(WorkerList)
 		}
 	}
 	WorkerListLock.Unlock()
@@ -75,6 +78,12 @@ func GetWorker() string {
 	return addr
 }
 
+func monitorWorker() {
+	for workers := range workerChannel {
+		log.Printf("Active workers: %d", workers)
+	}
+}
+
 func ActivateMasterServer(port *int) {
 	// listen to request to specified port
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
@@ -88,6 +97,9 @@ func ActivateMasterServer(port *int) {
 	// register the server
 	pb.RegisterMasterServer(s, &MasterServer{})
 	log.Printf("Master server listening at %v", lis.Addr())
+
+	workerChannel <- 0
+	go monitorWorker()
 
 	// serve the request
 	if err := s.Serve(lis); err != nil {

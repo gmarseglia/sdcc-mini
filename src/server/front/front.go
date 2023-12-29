@@ -59,7 +59,8 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 		// contact the server
 		WorkerResponse, err := c.Choice(ctxInternal, in)
 		if err != nil {
-			log.Printf("could not greet: %v", err)
+			// log.Printf("could not greet: %v", err)
+			log.Printf("%s is unreachable.", addr)
 			master.RemoveWorker(addr)
 			continue
 		}

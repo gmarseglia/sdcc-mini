@@ -17,31 +17,27 @@ import (
 )
 
 var (
-	masterAddr        = flag.String("addr", "localhost", "The address to connect to")
-	masterPort        = flag.Int("masterPort", 55556, "The port of the master service")
-	workerInitialPort = flag.Int("workerPort", 55557, "The port of the worker service")
-	workerPort        int
-	workerListener    net.Listener
-	active            int
-	activeChannel     = make(chan int, 1000)
-	counter           int
-	counterLock       sync.Mutex
-	Prng              = rand.New(rand.NewSource(14))
+	masterAddr     = flag.String("addr", "localhost", "The address to connect to")
+	masterPort     = flag.Int("masterPort", 55556, "The port of the master service")
+	workerListener net.Listener
+	active         int
+	activeChannel  = make(chan int, 1000)
+	counter        int
+	counterLock    sync.Mutex
+	Prng           = rand.New(rand.NewSource(14))
 )
 
 func listen() {
-	// listen to request to specified port
+	// listen to request to a free port
 	var err error
-	for port := *workerInitialPort; ; port += 1 {
-		workerListener, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
-		if err == nil {
-			workerPort = port
-			log.Printf("Worker server listening at %d", workerPort)
-			break
-		} else {
-			log.Printf("failed to listen: %v", err)
-		}
+	workerListener, err = net.Listen("tcp", ":0")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
 	}
+
+	workerPort := workerListener.Addr().(*net.TCPAddr).Port
+	log.Printf("Worker server listening at %d", workerPort)
+
 }
 
 func notifyWorkerActive() {
@@ -61,7 +57,7 @@ func notifyWorkerActive() {
 	defer cancel()
 
 	// contact the server
-	r, err := c.NotifyActiveWorker(ctx, &pb.NotifyRequest{WorkerAddress: fmt.Sprintf("localhost:%d", workerPort)})
+	r, err := c.NotifyActiveWorker(ctx, &pb.NotifyRequest{WorkerAddress: workerListener.Addr().String()})
 	if err != nil {
 		log.Fatalf("could not notify: %v", err)
 	}
@@ -132,9 +128,12 @@ func main() {
 	// find free port and listen
 	listen()
 
+	// Activate the Back Server
+	go activateBackServer()
+	time.Sleep(time.Millisecond * 10)
+
 	// notify master
 	notifyWorkerActive()
-
-	activateBackServer()
+	select {}
 
 }
