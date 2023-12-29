@@ -36,7 +36,7 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 	log.Printf("Request #%d started.", id)
 
 	for {
-		// get workerr
+		// get worker
 		addr := master.GetWorker()
 
 		// Set up a connection to the gRPC server
@@ -50,7 +50,7 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 		c := pb.NewBackClient(conn)
 
 		// create the context
-		ctxInternal, cancel := context.WithTimeout(context.Background(), time.Second*60)
+		ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 		defer cancel()
 
 		// time the call
