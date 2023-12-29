@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	pb "mini/proto"
+	"mini/utils"
 	"net"
 	"time"
 
@@ -19,6 +21,9 @@ var (
 	workerInitialPort = flag.Int("workerPort", 55557, "The port of the worker service")
 	workerPort        int
 	workerListener    net.Listener
+	active            int
+	counter           int
+	Prng              = rand.New(rand.NewSource(14))
 )
 
 func listen() {
@@ -31,7 +36,7 @@ func listen() {
 			log.Printf("Worker server listening at %d", workerPort)
 			break
 		} else {
-			log.Fatalf("failed to listen: %v", err)
+			log.Printf("failed to listen: %v", err)
 		}
 	}
 }
@@ -61,7 +66,73 @@ func notifyWorkerActive() {
 	log.Printf("r: %s", r.GetResult())
 }
 
+type backServer struct {
+	pb.UnimplementedBackServer
+}
+
+// SayHello implements helloworld.GreeterServer
+func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
+	// signal as activated
+	active += 1
+
+	// log response
+	counter += 1
+	replyID := counter
+	log.Printf("Received #%d:(%s, %s)", counter, in.GetOption1(), in.GetOption2())
+
+	// sleep
+	utils.SimulatedCPUIntensiveFunction(1000, &active, 1)
+
+	// signal as deactivated
+	active -= 1
+
+	// randomly choose response
+	var response string
+	if Prng.Intn(2) == 0 {
+		response = in.GetOption1()
+	} else {
+		response = in.GetOption2()
+	}
+
+	// send response
+	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
+}
+
+func debugActive() {
+	lastActive := -1
+	for {
+		if active != lastActive {
+			lastActive = active
+			log.Printf("*active: %d", active)
+			time.Sleep(utils.Step * 2)
+		}
+	}
+}
+
+func activateBackServer() {
+	// create a new server
+	s := grpc.NewServer()
+
+	// register the server
+	pb.RegisterBackServer(s, &backServer{})
+	log.Printf("Back server listening at %v", workerListener.Addr())
+
+	// start debugging active level
+	go debugActive()
+
+	// serve the request
+	if err := s.Serve(workerListener); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
 func main() {
+	// find free port and listen
 	listen()
+
+	// notify master
 	notifyWorkerActive()
+
+	activateBackServer()
+
 }

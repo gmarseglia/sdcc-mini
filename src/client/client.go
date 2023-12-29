@@ -48,5 +48,5 @@ func main() {
 	}
 
 	// print the result
-	log.Printf("Respone: (#%d,%s); Time spent: %d ms", r.GetReplyID(), r.GetOption(), time.Since(startTime).Milliseconds())
+	log.Printf("Response: (#%d, %s); Time spent: %d ms", r.GetReplyID(), r.GetOption(), time.Since(startTime).Milliseconds())
 }
