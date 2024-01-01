@@ -36,7 +36,7 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 	counter += 1
 	replyID := counter
 	counterLock.Unlock()
-	log.Printf("Received #%d:(%s, %s)", counter, in.GetOption1(), in.GetOption2())
+	log.Printf("[Back server]: Received request #%d", counter)
 
 	// sleep
 	utils.SimulatedCPUIntensiveFunction(1000, &active, 1)
@@ -59,7 +59,7 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 
 func debugActive() {
 	for active := range activeChannel {
-		log.Printf("*active: %d", active)
+		log.Printf("[Back server]: Active rpc: %d", active)
 	}
 }
 
