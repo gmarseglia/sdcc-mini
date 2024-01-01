@@ -6,7 +6,9 @@ import (
 	"mini/worker/worker"
 	"net"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -57,12 +59,21 @@ func main() {
 	go back.StartServer(workerListener)
 	time.Sleep(time.Millisecond * 10)
 
+	// install signal handler
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+		<-sigCh
+		stopComponentsAndExit("SIGTERM received")
+	}()
+
 	// notify master
 	err = worker.NotifyWorkerActive(workerListener.Addr().String())
 	if err != nil {
 		stopComponentsAndExit("Master unreachable")
 	}
 
+	// infite loop with server pings
 	for {
 		time.Sleep(time.Second * 10)
 		err := worker.PingServer()

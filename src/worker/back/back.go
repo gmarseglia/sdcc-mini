@@ -69,14 +69,14 @@ func StartServer(workerListener net.Listener) {
 
 	// register the server
 	pb.RegisterBackServer(s, &backServer{})
-	log.Printf("Back server listening at %v", workerListener.Addr())
+	log.Printf("[Back server]: Back server listening at %v", workerListener.Addr())
 
 	// start debugging active level
 	go debugActive()
 
 	// serve the request
 	if err := s.Serve(workerListener); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		log.Fatalf("[Back server]: failed to serve: %v", err)
 	}
 }
 
