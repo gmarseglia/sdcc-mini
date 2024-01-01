@@ -1,4 +1,4 @@
-src/client/parallelClients.sh
+src/client/runParallelClients.sh
 src/server/runServer.sh
 src/proto/recompile.sh
 src/worker/runMultipleWorker.sh
