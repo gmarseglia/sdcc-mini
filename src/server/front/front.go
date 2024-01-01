@@ -17,6 +17,7 @@ import (
 var (
 	counter     int
 	counterLock sync.Mutex
+	s           *grpc.Server
 )
 
 // FrontServer is used to implement the MiniServer interface
@@ -72,7 +73,7 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 	}
 }
 
-func ActivateFrontServer(port *int) {
+func StartFrontServer(port *int) {
 	// listen to request to specified port
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
@@ -80,7 +81,7 @@ func ActivateFrontServer(port *int) {
 	}
 
 	// create a new server
-	s := grpc.NewServer()
+	s = grpc.NewServer()
 
 	// register the server
 	pb.RegisterFrontServer(s, &FrontServer{})
@@ -90,4 +91,15 @@ func ActivateFrontServer(port *int) {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+}
+
+func StopServer(wg *sync.WaitGroup) {
+	log.Printf("[Front server]: Grafecully stopping...")
+
+	// Graceful stop
+	s.GracefulStop()
+	log.Printf("[Front server]: Done.")
+
+	// Comunicate on channel so sync
+	(*wg).Done()
 }

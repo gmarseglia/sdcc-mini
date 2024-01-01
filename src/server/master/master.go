@@ -17,6 +17,7 @@ var (
 	WorkerList     []string
 	workerCounter  int
 	workerChannel  = make(chan int, 1000)
+	s              *grpc.Server
 )
 
 type MasterServer struct {
@@ -84,7 +85,7 @@ func monitorWorker() {
 	}
 }
 
-func ActivateMasterServer(port *int) {
+func StartServer(port *int) {
 	// listen to request to specified port
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
@@ -92,7 +93,7 @@ func ActivateMasterServer(port *int) {
 	}
 
 	// create a new server
-	s := grpc.NewServer()
+	s = grpc.NewServer()
 
 	// register the server
 	pb.RegisterMasterServer(s, &MasterServer{})
@@ -105,4 +106,15 @@ func ActivateMasterServer(port *int) {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+}
+
+func StopServer(wg *sync.WaitGroup) {
+	log.Printf("[Master server]: Grafecully stopping...")
+
+	// Graceful stop
+	s.GracefulStop()
+	log.Printf("[Master server]: Done.")
+
+	// Comunicate on channel so sync
+	(*wg).Done()
 }
