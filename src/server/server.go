@@ -22,7 +22,7 @@ var (
 func main() {
 	log.SetOutput(os.Stdout)
 
-	log.Printf("[Main]: Welcome, begin components start.")
+	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
 
 	// parse the flags for CLI
 	flag.Parse()
@@ -41,13 +41,12 @@ func main() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 		<-sigCh
-		log.Printf("[Main]: SIGTERM received, begin components stop.")
+		log.Printf("[Main]: SIGTERM received. Begin components stop.")
 		master.StopServer(&wg)
 		front.StopServer(&wg)
 	}()
 
 	wg.Wait()
-	log.Printf("[Main]: All componentes are stopped. Stopping server...")
-	log.Printf("[Main]: Done")
+	log.Printf("[Main]: All componentes stopped. Main component stopped. Goodbye.")
 
 }

@@ -18,6 +18,7 @@ var (
 	counter       int
 	counterLock   sync.Mutex
 	Prng          = rand.New(rand.NewSource(14))
+	s             *grpc.Server
 )
 
 type backServer struct {
@@ -64,7 +65,7 @@ func debugActive() {
 
 func StartServer(workerListener net.Listener) {
 	// create a new server
-	s := grpc.NewServer()
+	s = grpc.NewServer()
 
 	// register the server
 	pb.RegisterBackServer(s, &backServer{})
@@ -77,4 +78,15 @@ func StartServer(workerListener net.Listener) {
 	if err := s.Serve(workerListener); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+}
+
+func StopServer(wg *sync.WaitGroup) {
+	log.Printf("[Back server]: Grafecully stopping...")
+
+	// Graceful stop
+	s.GracefulStop()
+	log.Printf("[Back server]: Done.")
+
+	// Comunicate on channel so sync
+	(*wg).Done()
 }

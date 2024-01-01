@@ -5,32 +5,70 @@ import (
 	"mini/worker/back"
 	"mini/worker/worker"
 	"net"
+	"os"
+	"sync"
 	"time"
 )
 
-func listen() net.Listener {
+var (
+	wg = sync.WaitGroup{}
+)
+
+func listen() (net.Listener, error) {
 	// listen to request to a free port
 	lis, err := net.Listen("tcp", ":0")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Printf("[Main]: Failed to listen.\nMore: %v", err)
+		return nil, err
 	}
 
 	workerPort := lis.Addr().(*net.TCPAddr).Port
-	log.Printf("Worker server listening at %d", workerPort)
+	log.Printf("[Main]: Worker server listening at %d", workerPort)
 
-	return lis
+	return lis, nil
+}
+
+func stopComponentsAndExit(message string) {
+	log.Printf("[Main]: %s. Begin components stop.", message)
+	back.StopServer(&wg)
+
+	wg.Wait()
+
+	exit()
+}
+
+func exit() {
+	log.Printf("[Main]: All components stopped. Main component stopped. Goodbye.")
+
+	os.Exit(0)
 }
 
 func main() {
+	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
+
 	// find free port and listen
-	workerListener := listen()
+	workerListener, err := listen()
+	if err != nil {
+		exit()
+	}
 
 	// Activate the Back Server
+	wg.Add(1)
 	go back.StartServer(workerListener)
 	time.Sleep(time.Millisecond * 10)
 
 	// notify master
-	worker.NotifyWorkerActive(workerListener.Addr().String())
-	select {}
+	err = worker.NotifyWorkerActive(workerListener.Addr().String())
+	if err != nil {
+		stopComponentsAndExit("Master unreachable")
+	}
+
+	for {
+		time.Sleep(time.Second * 10)
+		err := worker.PingServer()
+		if err != nil {
+			stopComponentsAndExit("Ping failed")
+		}
+	}
 
 }

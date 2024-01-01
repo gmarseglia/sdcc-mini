@@ -13,21 +13,43 @@ import (
 )
 
 var (
-	masterAddr = flag.String("addr", "localhost", "The address to connect to")
-	masterPort = flag.Int("masterPort", 55556, "The port of the master service")
+	masterAddr     = flag.String("addr", "localhost", "The address to connect to")
+	masterPort     = flag.Int("masterPort", 55556, "The port of the master service")
+	masterFullAddr = fmt.Sprintf("%s:%d", *masterAddr, *masterPort)
+	conn           *grpc.ClientConn
+	c              pb.MasterClient
+	workerAddr     string
 )
 
-func NotifyWorkerActive(workerAddr string) {
+func dialServerAndSetClient() error {
 	// Set up a connection to the gRPC server
-	masterFullAddr := fmt.Sprintf("%s:%d", *masterAddr, *masterPort)
-	conn, err := grpc.Dial(masterFullAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+	var err error
+
+	if conn == nil {
+		conn, err = grpc.Dial(masterFullAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Printf("[Worker]: Could not Dial. More:\n%v", err)
+			return err
+		}
 	}
-	defer conn.Close()
 
 	// create the client object
-	c := pb.NewMasterClient(conn)
+	if c == nil {
+		c = pb.NewMasterClient(conn)
+	}
+
+	return nil
+}
+
+func NotifyWorkerActive(givenWorkerAddr string) error {
+	// Save workerAddr
+	workerAddr = givenWorkerAddr
+
+	// Dial master
+	err := dialServerAndSetClient()
+	if err != nil {
+		return err
+	}
 
 	// create the context
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
@@ -36,8 +58,29 @@ func NotifyWorkerActive(workerAddr string) {
 	// contact the server
 	r, err := c.NotifyActiveWorker(ctx, &pb.NotifyRequest{WorkerAddress: workerAddr})
 	if err != nil {
-		log.Fatalf("could not notify: %v", err)
+		log.Printf("[Worker]: Could not notify Master. More:\n%v", err)
+		return err
 	}
 
-	log.Printf("r: %s", r.GetResult())
+	// Print server response
+	log.Printf("[Worker]: Server reply: %s", r.GetResult())
+
+	return nil
+}
+
+func PingServer() error {
+	dialServerAndSetClient()
+
+	// create the context
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	// contact the server
+	_, err := c.NotifyPing(ctx, &pb.NotifyRequest{WorkerAddress: workerAddr})
+
+	if err != nil {
+		log.Printf("[Worker]: Could not ping Master. More:\n%v", err)
+	}
+
+	return err
 }
