@@ -24,15 +24,23 @@ type MasterServer struct {
 	pb.UnimplementedMasterServer
 }
 
-// SayHello implements helloworld.GreeterServer
+// SayHello implementation
 func (s *MasterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequest) (*pb.NotifyReply, error) {
-	log.Printf("Notification from %s", in.GetWorkerAddress())
+	log.Printf("[Master]: Notification from %s", in.GetWorkerAddress())
 
 	// Add worker
 	resultMessage := AddWorker(in.GetWorkerAddress())
 
 	// send response
 	return &pb.NotifyReply{Result: resultMessage}, nil
+}
+
+// NotifyPing implementation
+func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.NotifyRequest) (*pb.NotifyReply, error) {
+	log.Printf("[Master DEV]: ping from %s.", in.GetWorkerAddress())
+
+	// send response
+	return &pb.NotifyReply{Result: "PING OK"}, nil
 }
 
 func AddWorker(targetWorkerAddr string) string {

@@ -20,6 +20,8 @@ var (
 )
 
 func main() {
+	log.SetOutput(os.Stdout)
+
 	log.Printf("[Main]: Welcome, begin components start.")
 
 	// parse the flags for CLI

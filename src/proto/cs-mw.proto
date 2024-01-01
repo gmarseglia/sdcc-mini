@@ -33,4 +33,5 @@ service Back {
 service Master {
     rpc NotifyActiveWorker(NotifyRequest) returns (NotifyReply) {}
     rpc NotifyDeactiveWorker(NotifyRequest) returns (NotifyReply) {}
+    rpc NotifyPing(NotifyRequest) returns (NotifyReply) {}
 }

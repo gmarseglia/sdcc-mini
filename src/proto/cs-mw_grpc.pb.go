@@ -201,6 +201,7 @@ var Back_ServiceDesc = grpc.ServiceDesc{
 const (
 	Master_NotifyActiveWorker_FullMethodName   = "/mini.Master/NotifyActiveWorker"
 	Master_NotifyDeactiveWorker_FullMethodName = "/mini.Master/NotifyDeactiveWorker"
+	Master_NotifyPing_FullMethodName           = "/mini.Master/NotifyPing"
 )
 
 // MasterClient is the client API for Master service.
@@ -209,6 +210,7 @@ const (
 type MasterClient interface {
 	NotifyActiveWorker(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
 	NotifyDeactiveWorker(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
+	NotifyPing(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
 }
 
 type masterClient struct {
@@ -237,12 +239,22 @@ func (c *masterClient) NotifyDeactiveWorker(ctx context.Context, in *NotifyReque
 	return out, nil
 }
 
+func (c *masterClient) NotifyPing(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error) {
+	out := new(NotifyReply)
+	err := c.cc.Invoke(ctx, Master_NotifyPing_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MasterServer is the server API for Master service.
 // All implementations must embed UnimplementedMasterServer
 // for forward compatibility
 type MasterServer interface {
 	NotifyActiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error)
 	NotifyDeactiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error)
+	NotifyPing(context.Context, *NotifyRequest) (*NotifyReply, error)
 	mustEmbedUnimplementedMasterServer()
 }
 
@@ -255,6 +267,9 @@ func (UnimplementedMasterServer) NotifyActiveWorker(context.Context, *NotifyRequ
 }
 func (UnimplementedMasterServer) NotifyDeactiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NotifyDeactiveWorker not implemented")
+}
+func (UnimplementedMasterServer) NotifyPing(context.Context, *NotifyRequest) (*NotifyReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NotifyPing not implemented")
 }
 func (UnimplementedMasterServer) mustEmbedUnimplementedMasterServer() {}
 
@@ -305,6 +320,24 @@ func _Master_NotifyDeactiveWorker_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Master_NotifyPing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NotifyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServer).NotifyPing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Master_NotifyPing_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).NotifyPing(ctx, req.(*NotifyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Master_ServiceDesc is the grpc.ServiceDesc for Master service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -319,6 +352,10 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NotifyDeactiveWorker",
 			Handler:    _Master_NotifyDeactiveWorker_Handler,
+		},
+		{
+			MethodName: "NotifyPing",
+			Handler:    _Master_NotifyPing_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
