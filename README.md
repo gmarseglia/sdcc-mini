@@ -118,4 +118,4 @@ The client only acts as gRpc client toward the front component of the server.
 
 ## Develop branch
 
-The develop branch contains some .sh scripts to run multiple clients and workers.
+The Debug branch contains some .sh scripts to run multiple clients and workers.
