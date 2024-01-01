@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"time"
 
@@ -17,7 +18,8 @@ const (
 )
 
 var (
-	addr = flag.String("addr", "localhost:55555", "the address to connect to")
+	frontAddr = flag.String("frontAddr", "localhost", "The address to connect to")
+	frontPort = flag.Int("frontPort", 55555, "The port of the master service")
 )
 
 func main() {
@@ -25,7 +27,8 @@ func main() {
 	flag.Parse()
 
 	// Set up a connection to the gRPC server
-	conn, err := grpc.Dial(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	serverFullAddr := fmt.Sprintf("%s:%d", *frontAddr, *frontPort)
+	conn, err := grpc.Dial(serverFullAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
