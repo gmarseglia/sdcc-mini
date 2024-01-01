@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	masterAddr = flag.String("addr", "localhost", "The address to connect to")
+	masterAddr = flag.String("masterAddr", "localhost", "The address to connect to")
 	masterPort = flag.Int("masterPort", 55556, "The port of the master service")
 	conn       *grpc.ClientConn
 	c          pb.MasterClient
