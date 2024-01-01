@@ -2,6 +2,7 @@ package master
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	pb "mini/proto"
@@ -13,6 +14,7 @@ import (
 )
 
 var (
+	masterPort     = flag.Int("masterPort", 55556, "The server port for master service")
 	WorkerListLock sync.RWMutex
 	WorkerList     []string
 	workerCounter  int
@@ -37,7 +39,7 @@ func (s *MasterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequ
 
 // NotifyPing implementation
 func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.NotifyRequest) (*pb.NotifyReply, error) {
-	log.Printf("[Master DEV]: ping from %s.", in.GetWorkerAddress())
+	// log.Printf("[Master DEV]: ping from %s.", in.GetWorkerAddress())
 
 	// send response
 	return &pb.NotifyReply{Result: "PING OK"}, nil
@@ -89,15 +91,15 @@ func GetWorker() string {
 
 func monitorWorker() {
 	for workers := range workerChannel {
-		log.Printf("Active workers: %d", workers)
+		log.Printf("[Master]: Active workers: %d", workers)
 	}
 }
 
-func StartServer(port *int) {
+func StartServer() {
 	// listen to request to specified port
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *masterPort))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("[Master]: Failed to listen: %v", err)
 	}
 
 	// create a new server
@@ -105,23 +107,23 @@ func StartServer(port *int) {
 
 	// register the server
 	pb.RegisterMasterServer(s, &MasterServer{})
-	log.Printf("Master server listening at %v", lis.Addr())
+	log.Printf("[Master]: Listening at %v", lis.Addr())
 
 	workerChannel <- 0
 	go monitorWorker()
 
 	// serve the request
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		log.Fatalf("[Master]: Failed to serve: %v", err)
 	}
 }
 
 func StopServer(wg *sync.WaitGroup) {
-	log.Printf("[Master server]: Grafecully stopping...")
+	log.Printf("[Master]: Grafecully stopping...")
 
 	// Graceful stop
 	s.GracefulStop()
-	log.Printf("[Master server]: Done.")
+	log.Printf("[Master]: Done.")
 
 	// Comunicate on channel so sync
 	(*wg).Done()

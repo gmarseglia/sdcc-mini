@@ -14,9 +14,7 @@ import (
 
 // define flags
 var (
-	frontPort  = flag.Int("frontPort", 55555, "The server port for front service")
-	masterPort = flag.Int("masterPort", 55556, "The server port for master service")
-	wg         = sync.WaitGroup{}
+	wg = sync.WaitGroup{}
 )
 
 func main() {
@@ -29,12 +27,12 @@ func main() {
 
 	// start master server and add to wait gruop
 	wg.Add(1)
-	go master.StartServer(masterPort)
+	go master.StartServer()
 	time.Sleep(time.Millisecond * 10)
 
 	// start front server and add to wait group
 	wg.Add(1)
-	go front.StartFrontServer(frontPort)
+	go front.StartFrontServer()
 
 	// install signal handler
 	go func() {

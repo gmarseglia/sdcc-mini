@@ -2,6 +2,7 @@ package front
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	pb "mini/proto"
@@ -15,6 +16,7 @@ import (
 )
 
 var (
+	frontPort   = flag.Int("frontPort", 55555, "The server port for front service")
 	counter     int
 	counterLock sync.Mutex
 	s           *grpc.Server
@@ -34,7 +36,7 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 	var id = counter
 	counterLock.Unlock()
 
-	log.Printf("Request #%d started.", id)
+	log.Printf("[Front]: Request #%d started.", id)
 
 	for {
 		// get worker
@@ -43,7 +45,7 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 		// Set up a connection to the gRPC server
 		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			log.Fatalf("did not connect: %v", err)
+			log.Fatalf("[Front]: Did not connect: %v", err)
 		}
 		defer conn.Close()
 
@@ -61,23 +63,23 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 		WorkerResponse, err := c.Choice(ctxInternal, in)
 		if err != nil {
 			// log.Printf("could not greet: %v", err)
-			log.Printf("%s is unreachable.", addr)
+			log.Printf("[Front]: %s is unreachable.", addr)
 			master.RemoveWorker(addr)
 			continue
 		}
 
-		log.Printf("Response: (#%d/%d,%s); Time spent: %d ms", WorkerResponse.GetReplyID(), id, WorkerResponse.GetOption(), time.Since(startTime).Milliseconds())
+		log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms", id, WorkerResponse.GetReplyID(), time.Since(startTime).Milliseconds())
 
 		// send response
 		return &pb.ChoiceReply{Option: WorkerResponse.GetOption(), ReplyID: int32(id)}, nil
 	}
 }
 
-func StartFrontServer(port *int) {
+func StartFrontServer() {
 	// listen to request to specified port
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *frontPort))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("[Front]: Failed to listen: %v", err)
 	}
 
 	// create a new server
@@ -85,20 +87,20 @@ func StartFrontServer(port *int) {
 
 	// register the server
 	pb.RegisterFrontServer(s, &FrontServer{})
-	log.Printf("Front server listening at %v", lis.Addr())
+	log.Printf("[Front]: Listening at %v", lis.Addr())
 
 	// serve the request
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		log.Fatalf("[Front]: Failed to serve: %v", err)
 	}
 }
 
 func StopServer(wg *sync.WaitGroup) {
-	log.Printf("[Front server]: Grafecully stopping...")
+	log.Printf("[Front]: Grafecully stopping...")
 
 	// Graceful stop
 	s.GracefulStop()
-	log.Printf("[Front server]: Done.")
+	log.Printf("[Front]: Done.")
 
 	// Comunicate on channel so sync
 	(*wg).Done()
