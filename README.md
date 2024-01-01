@@ -113,3 +113,9 @@ Periodically the worker will check if the master is alive. If not, then the work
 The client is a simple as it gets and it's complelty obvious of the underlying architecture.
 
 The client only acts as gRpc client toward the front component of the server.
+
+# More 
+
+## Develop branch
+
+The develop branch contains some .sh scripts to run multiple clients and workers.
