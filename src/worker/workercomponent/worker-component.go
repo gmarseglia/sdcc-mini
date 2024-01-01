@@ -13,12 +13,11 @@ import (
 )
 
 var (
-	masterAddr     = flag.String("addr", "localhost", "The address to connect to")
-	masterPort     = flag.Int("masterPort", 55556, "The port of the master service")
-	masterFullAddr = fmt.Sprintf("%s:%d", *masterAddr, *masterPort)
-	conn           *grpc.ClientConn
-	c              pb.MasterClient
-	workerAddr     string
+	masterAddr = flag.String("addr", "localhost", "The address to connect to")
+	masterPort = flag.Int("masterPort", 55556, "The port of the master service")
+	conn       *grpc.ClientConn
+	c          pb.MasterClient
+	workerAddr string
 )
 
 func dialServerAndSetClient() error {
@@ -26,6 +25,7 @@ func dialServerAndSetClient() error {
 	var err error
 
 	if conn == nil {
+		masterFullAddr := fmt.Sprintf("%s:%d", *masterAddr, *masterPort)
 		conn, err = grpc.Dial(masterFullAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Printf("[Worker]: Could not Dial. More:\n%v", err)

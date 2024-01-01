@@ -1,9 +1,10 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"mini/worker/back"
-	"mini/worker/worker"
+	worker "mini/worker/workercomponent"
 	"net"
 	"os"
 	"os/signal"
@@ -47,6 +48,8 @@ func exit() {
 
 func main() {
 	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
+
+	flag.Parse()
 
 	// find free port and listen
 	workerListener, err := listen()
