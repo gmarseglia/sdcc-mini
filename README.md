@@ -20,7 +20,7 @@ The main steps are:
 5. The worker actually completes the procedure.
 6. The reply goes back to the client.
 
-The chosen procedure is a simple procedure which chooses randomly between two options.
+The chosen procedure chooses randomly between two options but simulates a CPU intensive by scaling linearly the time needed to complete with the number of active requests on the worker.
 
 ## Server
 
@@ -73,6 +73,7 @@ Send SIGTERM to gracefully stop the worker.
 
 Launch 1+ clients.
 Client will connect to the front port of the server.
+Client will send `zzz` (default 1) requests in parallel to server.
 
 Install:
 
@@ -84,7 +85,7 @@ go build client.go
 Run:
 
 ```
-./client --frontAddr abcd:efgh:hijk:lmno --frontPort xxx
+./client --frontAddr abcd:efgh:hijk:lmno --frontPort xxx --requestCount zzz
 ```
 
 # Architecture 
@@ -110,7 +111,7 @@ Periodically the worker will check if the master is alive. If not, then the work
 
 ## Client
 
-The client is a simple as it gets and it's complelty obvious of the underlying architecture.
+The client is complelty obvious of the underlying architecture.
 
 The client only acts as gRpc client toward the front component of the server.
 
