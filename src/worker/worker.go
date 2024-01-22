@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"mini/worker/back"
 	worker "mini/worker/workercomponent"
@@ -14,12 +15,13 @@ import (
 )
 
 var (
-	wg = sync.WaitGroup{}
+	wg         = sync.WaitGroup{}
+	workerPort = flag.Int("workerPort", 55557, "The port of the worker service")
 )
 
 func listen() (net.Listener, error) {
 	// listen to request to a free port
-	lis, err := net.Listen("tcp", ":0")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *workerPort))
 	if err != nil {
 		log.Printf("[Main]: Failed to listen.\nMore: %v", err)
 		return nil, err

@@ -10,4 +10,6 @@ COPY ./src .
 
 RUN go build -v -o /usr/local/bin/worker ./worker/worker.go
 
+EXPOSE 55557
+
 CMD ["worker"]
