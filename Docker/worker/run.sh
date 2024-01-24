@@ -2,6 +2,12 @@
 
 source ./Docker/names.config
 
+
+if [[ $# -eq 1 ]] && [[ $1 -eq "-i" ]]; then
+    docker run --rm -it -p 55557/tcp $WORKER_IMAGE_NAME:latest
+    exit 0
+fi
+
 re='^[0-9]+$'
 
 if [[ $# -eq 1 ]] && [[ $1 =~ $re ]]; then

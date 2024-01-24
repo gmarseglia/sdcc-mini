@@ -5,6 +5,7 @@ import (
 	"log"
 	"mini/server/front"
 	"mini/server/master"
+	"mini/utils"
 	"os"
 	"os/signal"
 	"sync"
@@ -24,6 +25,10 @@ func main() {
 
 	// parse the flags for CLI
 	flag.Parse()
+
+	// Save workerAddr
+	serverAddr := utils.GetOutboundIP().String()
+	log.Printf("!!![Main]: Server Address: %s\n", serverAddr)
 
 	// start master server and add to wait gruop
 	wg.Add(1)
