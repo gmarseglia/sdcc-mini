@@ -4,6 +4,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"os"
 	"time"
 )
 
@@ -43,4 +44,13 @@ func GetOutboundIP() net.IP {
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 	return localAddr.IP
+}
+
+func SetupField(field *string, envName string, defaultValue string) {
+	if *field == "" {
+		*field = os.Getenv(envName)
+		if *field == "" {
+			*field = defaultValue
+		}
+	}
 }

@@ -4,7 +4,7 @@ source ./Docker/names.config
 
 
 if [[ $# -eq 1 ]] && [[ $1 -eq "-i" ]]; then
-    docker run --rm -it -p 55557/tcp $WORKER_IMAGE_NAME:latest
+    docker run --rm -it -p 55557:55557/tcp --name=$WORKER_CONTAINER_NAME  $WORKER_IMAGE_NAME:latest
     exit 0
 fi
 

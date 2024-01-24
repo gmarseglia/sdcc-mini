@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"mini/utils"
 	"mini/worker/back"
 	worker "mini/worker/workercomponent"
-	"net"
 	"os"
 	"os/signal"
 	"sync"
@@ -15,22 +15,17 @@ import (
 )
 
 var (
-	wg         = sync.WaitGroup{}
-	workerPort = flag.Int("workerPort", 55557, "The port of the worker service")
+	wg = sync.WaitGroup{}
 )
 
-func listen() (net.Listener, error) {
-	// listen to request to a free port
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *workerPort))
-	if err != nil {
-		log.Printf("[Main]: Failed to listen.\nMore: %v", err)
-		return nil, err
-	}
-
-	workerPort := lis.Addr().(*net.TCPAddr).Port
-	log.Printf("[Main]: Worker server listening at %d", workerPort)
-
-	return lis, nil
+func setupAddresses() {
+	// Setup WorkerPort
+	utils.SetupField(back.HostAddr, "HostAddr", utils.GetOutboundIP().String())
+	utils.SetupField(back.HostPort, "HostPort", "55557")
+	back.HostFullAddr = fmt.Sprintf("%s:%s", *back.HostAddr, *back.HostPort)
+	utils.SetupField(worker.MasterAddr, "MasterAddr", "0.0.0.0")
+	utils.SetupField(worker.MasterPort, "MasterPort", "55556")
+	worker.MasterFullAddr = fmt.Sprintf("%s:%s", *worker.MasterAddr, *worker.MasterPort)
 }
 
 func stopComponentsAndExit(message string) {
@@ -49,19 +44,20 @@ func exit() {
 }
 
 func main() {
-	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
-
 	flag.Parse()
 
-	// find free port and listen
-	workerListener, err := listen()
-	if err != nil {
-		exit()
-	}
+	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
+
+	setupAddresses()
 
 	// Activate the Back Server
 	wg.Add(1)
-	go back.StartServer(workerListener)
+	go func() {
+		err := back.StartServer()
+		if err != nil {
+			exit()
+		}
+	}()
 	time.Sleep(time.Millisecond * 10)
 
 	// install signal handler
@@ -73,7 +69,7 @@ func main() {
 	}()
 
 	// notify master
-	err = worker.NotifyWorkerActive(*workerPort)
+	err := worker.NotifyWorkerActive()
 	if err != nil {
 		stopComponentsAndExit("Master unreachable")
 	}
