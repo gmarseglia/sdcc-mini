@@ -18,7 +18,7 @@ var (
 	wg = sync.WaitGroup{}
 )
 
-func setupAddresses() {
+func setupFields() {
 	// Setup WorkerPort
 	utils.SetupFieldOptional(back.BackPort, "BackPort", "55557")
 	utils.SetupFieldMandatory(worker.HostAddr, "HostAddr", utils.GetOutboundIP().String(), func() {
@@ -55,7 +55,7 @@ func main() {
 
 	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
 
-	setupAddresses()
+	setupFields()
 
 	// Activate the Back Server
 	wg.Add(1)
