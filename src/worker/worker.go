@@ -20,12 +20,18 @@ var (
 
 func setupAddresses() {
 	// Setup WorkerPort
-	utils.SetupField(back.BackPort, "BackPort", "55557")
-	utils.SetupField(worker.HostAddr, "HostAddr", utils.GetOutboundIP().String())
-	utils.SetupField(worker.HostPort, "HostPort", "55557")
+	utils.SetupFieldOptional(back.BackPort, "BackPort", "55557")
+	utils.SetupFieldMandatory(worker.HostAddr, "HostAddr", utils.GetOutboundIP().String(), func() {
+		log.Printf("[Main]: HostAddr is a mandatory field.")
+		exit()
+	})
+	utils.SetupFieldOptional(worker.HostPort, "HostPort", "55557")
 	worker.HostFullAddr = fmt.Sprintf("%s:%s", *worker.HostAddr, *worker.HostPort)
-	utils.SetupField(worker.MasterAddr, "MasterAddr", "0.0.0.0")
-	utils.SetupField(worker.MasterPort, "MasterPort", "55556")
+	utils.SetupFieldMandatory(worker.MasterAddr, "MasterAddr", "0.0.0.0", func() {
+		log.Printf("[Main]: MasterAddr is a mandatory field.")
+		exit()
+	})
+	utils.SetupFieldOptional(worker.MasterPort, "MasterPort", "55556")
 	worker.MasterFullAddr = fmt.Sprintf("%s:%s", *worker.MasterAddr, *worker.MasterPort)
 }
 

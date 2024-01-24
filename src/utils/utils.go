@@ -46,11 +46,24 @@ func GetOutboundIP() net.IP {
 	return localAddr.IP
 }
 
-func SetupField(field *string, envName string, defaultValue string) {
+func SetupFieldOptional(field *string, envName string, defaultValue string) {
+	setupField(false, field, envName, defaultValue, nil)
+}
+
+func SetupFieldMandatory(field *string, envName string, defaultValue string, callback func()) {
+	setupField(true, field, envName, defaultValue, callback)
+}
+
+func setupField(mandatory bool, field *string, envName string, defaultValue string, callback func()) {
 	if *field == "" {
 		*field = os.Getenv(envName)
 		if *field == "" {
-			*field = defaultValue
+			if mandatory {
+				callback()
+				return
+			} else {
+				*field = defaultValue
+			}
 		}
 	}
 }
