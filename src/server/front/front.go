@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	frontPort   = flag.Int("frontPort", 55555, "The server port for front service")
+	FrontPort   = flag.String("FrontPort", "", "The port for front service.")
 	counter     int
 	counterLock sync.Mutex
 	s           *grpc.Server
@@ -77,7 +77,7 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 
 func StartFrontServer() {
 	// listen to request to specified port
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *frontPort))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *FrontPort))
 	if err != nil {
 		log.Fatalf("[Front]: Failed to listen: %v", err)
 	}

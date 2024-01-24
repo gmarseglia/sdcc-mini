@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"log"
 	"math"
+	"net"
+	"os"
 	"time"
 )
 
@@ -28,4 +31,39 @@ func DummyCPUIntensiveFunction(iterations int) float64 {
 	}
 
 	return result
+}
+
+// Get preferred outbound ip of this machine
+func GetOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
+}
+
+func SetupFieldOptional(field *string, envName string, defaultValue string) {
+	setupField(false, field, envName, defaultValue, nil)
+}
+
+func SetupFieldMandatory(field *string, envName string, callback func()) {
+	setupField(true, field, envName, "", callback)
+}
+
+func setupField(mandatory bool, field *string, envName string, defaultValue string, callback func()) {
+	if *field == "" {
+		*field = os.Getenv(envName)
+		if *field == "" {
+			if mandatory {
+				callback()
+				return
+			} else {
+				*field = defaultValue
+			}
+		}
+	}
 }

@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	pb "mini/proto"
 	"time"
@@ -13,11 +12,14 @@ import (
 )
 
 var (
-	masterAddr = flag.String("masterAddr", "localhost", "The address to connect to")
-	masterPort = flag.Int("masterPort", 55556, "The port of the master service")
-	conn       *grpc.ClientConn
-	c          pb.MasterClient
-	workerAddr string
+	HostAddr       = flag.String("HostAddr", "", "The address of the host to advertise.")
+	HostPort       = flag.String("HostPort", "", "The port of the host to advertise.")
+	HostFullAddr   string
+	MasterAddr     = flag.String("MasterAddr", "", "The address to connect to.")
+	MasterPort     = flag.String("MasterPort", "", "The port of the master service.")
+	MasterFullAddr string
+	conn           *grpc.ClientConn
+	c              pb.MasterClient
 )
 
 func dialServerAndSetClient() error {
@@ -25,8 +27,7 @@ func dialServerAndSetClient() error {
 	var err error
 
 	if conn == nil {
-		masterFullAddr := fmt.Sprintf("%s:%d", *masterAddr, *masterPort)
-		conn, err = grpc.Dial(masterFullAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err = grpc.Dial(MasterFullAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Printf("[Worker]: Could not Dial. More:\n%v", err)
 			return err
@@ -41,22 +42,22 @@ func dialServerAndSetClient() error {
 	return nil
 }
 
-func NotifyWorkerActive(givenWorkerAddr string) error {
-	// Save workerAddr
-	workerAddr = givenWorkerAddr
-
+func NotifyWorkerActive() error {
 	// Dial master
 	err := dialServerAndSetClient()
 	if err != nil {
 		return err
 	}
 
+	// Save workerAddr
+	log.Printf("[Worker]: Address to be advertised to master: %s\n", HostFullAddr)
+
 	// create the context
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	// contact the server
-	r, err := c.NotifyActiveWorker(ctx, &pb.NotifyRequest{WorkerAddress: workerAddr})
+	r, err := c.NotifyActiveWorker(ctx, &pb.NotifyRequest{WorkerAddress: HostFullAddr})
 	if err != nil {
 		log.Printf("[Worker]: Could not notify Master. More:\n%v", err)
 		return err
@@ -76,7 +77,7 @@ func PingServer() error {
 	defer cancel()
 
 	// contact the server
-	_, err := c.NotifyPing(ctx, &pb.NotifyRequest{WorkerAddress: workerAddr})
+	_, err := c.NotifyPing(ctx, &pb.NotifyRequest{WorkerAddress: HostFullAddr})
 
 	if err != nil {
 		log.Printf("[Worker]: Could not ping Master. More:\n%v", err)

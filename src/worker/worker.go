@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"mini/utils"
 	"mini/worker/back"
 	worker "mini/worker/workercomponent"
-	"net"
 	"os"
 	"os/signal"
 	"sync"
@@ -17,18 +18,18 @@ var (
 	wg = sync.WaitGroup{}
 )
 
-func listen() (net.Listener, error) {
-	// listen to request to a free port
-	lis, err := net.Listen("tcp", ":0")
-	if err != nil {
-		log.Printf("[Main]: Failed to listen.\nMore: %v", err)
-		return nil, err
-	}
-
-	workerPort := lis.Addr().(*net.TCPAddr).Port
-	log.Printf("[Main]: Worker server listening at %d", workerPort)
-
-	return lis, nil
+func setupFields() {
+	// Setup WorkerPort
+	utils.SetupFieldOptional(back.BackPort, "BackPort", "55557")
+	utils.SetupFieldOptional(worker.HostAddr, "HostAddr", utils.GetOutboundIP().String())
+	utils.SetupFieldOptional(worker.HostPort, "HostPort", "55557")
+	worker.HostFullAddr = fmt.Sprintf("%s:%s", *worker.HostAddr, *worker.HostPort)
+	utils.SetupFieldMandatory(worker.MasterAddr, "MasterAddr", func() {
+		log.Printf("[Main]: MasterAddr is a mandatory field.")
+		exit()
+	})
+	utils.SetupFieldOptional(worker.MasterPort, "MasterPort", "55556")
+	worker.MasterFullAddr = fmt.Sprintf("%s:%s", *worker.MasterAddr, *worker.MasterPort)
 }
 
 func stopComponentsAndExit(message string) {
@@ -47,19 +48,20 @@ func exit() {
 }
 
 func main() {
-	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
-
 	flag.Parse()
 
-	// find free port and listen
-	workerListener, err := listen()
-	if err != nil {
-		exit()
-	}
+	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
+
+	setupFields()
 
 	// Activate the Back Server
 	wg.Add(1)
-	go back.StartServer(workerListener)
+	go func() {
+		err := back.StartServer()
+		if err != nil {
+			exit()
+		}
+	}()
 	time.Sleep(time.Millisecond * 10)
 
 	// install signal handler
@@ -71,7 +73,7 @@ func main() {
 	}()
 
 	// notify master
-	err = worker.NotifyWorkerActive(workerListener.Addr().String())
+	err := worker.NotifyWorkerActive()
 	if err != nil {
 		stopComponentsAndExit("Master unreachable")
 	}

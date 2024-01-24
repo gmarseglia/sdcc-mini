@@ -2,6 +2,8 @@ package back
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	pb "mini/proto"
@@ -13,6 +15,7 @@ import (
 )
 
 var (
+	BackPort      = flag.String("BackPort", "", "The port of the back service.")
 	active        int
 	activeChannel = make(chan int, 1000)
 	counter       int
@@ -63,13 +66,31 @@ func debugActive() {
 	}
 }
 
-func StartServer(workerListener net.Listener) {
+func listen() (net.Listener, error) {
+	// listen to request to a free port
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *BackPort))
+	if err != nil {
+		return nil, err
+	}
+
+	return lis, nil
+}
+
+func StartServer() error {
+	// Listen
+	// find free port and listen
+	workerListener, err := listen()
+	if err != nil {
+		log.Printf("[Back server]: Failed to listen.\nMore: %v", err)
+		return err
+	}
+	log.Printf("[Back server]: Back server listening at port: %s", *BackPort)
+
 	// create a new server
 	s = grpc.NewServer()
 
 	// register the server
 	pb.RegisterBackServer(s, &backServer{})
-	log.Printf("[Back server]: Back server listening at %v", workerListener.Addr())
 
 	// start debugging active level
 	go debugActive()
@@ -78,6 +99,8 @@ func StartServer(workerListener net.Listener) {
 	if err := s.Serve(workerListener); err != nil {
 		log.Fatalf("[Back server]: failed to serve: %v", err)
 	}
+
+	return nil
 }
 
 func StopServer(wg *sync.WaitGroup) {

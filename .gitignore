@@ -3,3 +3,4 @@ src/server/runServer.sh
 src/proto/recompile.sh
 src/worker/runMultipleWorker.sh
 src/worker/output
+src/go.work.sum

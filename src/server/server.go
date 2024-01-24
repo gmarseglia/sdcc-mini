@@ -5,6 +5,7 @@ import (
 	"log"
 	"mini/server/front"
 	"mini/server/master"
+	"mini/utils"
 	"os"
 	"os/signal"
 	"sync"
@@ -17,13 +18,20 @@ var (
 	wg = sync.WaitGroup{}
 )
 
+func setupFields() {
+	utils.SetupFieldOptional(front.FrontPort, "FrontPort", "55555")
+	utils.SetupFieldOptional(master.MasterPort, "MasterPort", "55556")
+}
+
 func main() {
 	log.SetOutput(os.Stdout)
 
-	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
-
 	// parse the flags for CLI
 	flag.Parse()
+
+	setupFields()
+
+	log.Printf("[Main]: Welcome. Main component started. Begin components start.")
 
 	// start master server and add to wait gruop
 	wg.Add(1)
