@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	pb "mini/proto"
+	"mini/utils"
 )
 
 const (
@@ -19,14 +21,27 @@ const (
 )
 
 var (
-	frontAddr    = flag.String("frontAddr", "localhost", "The address to connect to")
-	frontPort    = flag.Int("frontPort", 55555, "The port of the master service")
+	FrontAddr    = flag.String("FrontAddr", "", "The address to connect to")
+	FrontPort    = flag.String("FrontPort", "", "The port of the master service")
 	requestCount = flag.Int("requestCount", 1, "The number of requests to send")
 	counter      int
 	counterLock  sync.Mutex
 	wg           sync.WaitGroup
 	c            pb.FrontClient
 )
+
+func setupFields() {
+	utils.SetupFieldMandatory(FrontAddr, "FrontAddr", func() {
+		log.Printf("[Main]: FrontAddr field is mandatory.")
+		exit()
+	})
+	utils.SetupFieldOptional(FrontPort, "FrontPort", "55555")
+}
+
+func exit() {
+	log.Printf("[Main]: All components stopped. Main component stopped. Goodbye.")
+	os.Exit(0)
+}
 
 func choice() {
 	// Internal ID
@@ -57,14 +72,17 @@ func choice() {
 }
 
 func main() {
+	log.SetOutput(os.Stdout)
+
 	// parse the flags
 	flag.Parse()
+	setupFields()
 
 	// Welcome message
 	log.Printf("[Main]: Welcome. Client will send %d requests in parallel.", *requestCount)
 
 	// Set up a connection to the gRPC server
-	serverFullAddr := fmt.Sprintf("%s:%d", *frontAddr, *frontPort)
+	serverFullAddr := fmt.Sprintf("%s:%s", *FrontAddr, *FrontPort)
 	conn, err := grpc.Dial(serverFullAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("[Main]: Could not not connect. More:\n%v", err)
