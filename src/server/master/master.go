@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	masterPort     = flag.Int("masterPort", 55556, "The server port for master service")
+	MasterPort     = flag.String("MasterPort", "", "The port for master service.")
 	WorkerListLock sync.RWMutex
 	WorkerList     []string
 	workerCounter  int
@@ -97,7 +97,7 @@ func monitorWorker() {
 
 func StartServer() {
 	// listen to request to specified port
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *masterPort))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *MasterPort))
 	if err != nil {
 		log.Fatalf("[Master]: Failed to listen: %v", err)
 	}
