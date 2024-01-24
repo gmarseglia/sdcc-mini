@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -21,9 +22,9 @@ const (
 )
 
 var (
-	FrontAddr    = flag.String("FrontAddr", "", "The address to connect to")
-	FrontPort    = flag.String("FrontPort", "", "The port of the master service")
-	requestCount = flag.Int("requestCount", 1, "The number of requests to send")
+	FrontAddr    = flag.String("FrontAddr", "", "The address to connect to.")
+	FrontPort    = flag.String("FrontPort", "", "The port of the master service.")
+	RequestCount = flag.String("RequestCount", "", "The number of requests to send.")
 	counter      int
 	counterLock  sync.Mutex
 	wg           sync.WaitGroup
@@ -36,6 +37,7 @@ func setupFields() {
 		exit()
 	})
 	utils.SetupFieldOptional(FrontPort, "FrontPort", "55555")
+	utils.SetupFieldOptional(RequestCount, "RequestCount", "1")
 }
 
 func exit() {
@@ -79,7 +81,12 @@ func main() {
 	setupFields()
 
 	// Welcome message
-	log.Printf("[Main]: Welcome. Client will send %d requests in parallel.", *requestCount)
+	requestCount, err := strconv.Atoi(*RequestCount)
+	if err != nil {
+		log.Printf("[Main]: RequestCount given is not a valid integer, reverting to default value: 1.")
+		requestCount = 1
+	}
+	log.Printf("[Main]: Welcome. Client will send %d requests in parallel.", requestCount)
 
 	// Set up a connection to the gRPC server
 	serverFullAddr := fmt.Sprintf("%s:%s", *FrontAddr, *FrontPort)
@@ -92,7 +99,7 @@ func main() {
 	// create the client object
 	c = pb.NewFrontClient(conn)
 
-	for i := 0; i < *requestCount; i++ {
+	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
 		go choice()
 	}
