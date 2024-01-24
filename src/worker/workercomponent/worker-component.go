@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	pb "mini/proto"
+	"net"
 	"time"
 
 	"google.golang.org/grpc"
@@ -41,15 +42,29 @@ func dialServerAndSetClient() error {
 	return nil
 }
 
-func NotifyWorkerActive(givenWorkerAddr string) error {
-	// Save workerAddr
-	workerAddr = givenWorkerAddr
+// Get preferred outbound ip of this machine
+func GetOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
 
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
+}
+
+func NotifyWorkerActive(givenWorkerPort int) error {
 	// Dial master
 	err := dialServerAndSetClient()
 	if err != nil {
 		return err
 	}
+
+	// Save workerAddr
+	workerAddr := fmt.Sprintf("%s:%d", GetOutboundIP().String(), givenWorkerPort)
+	log.Printf("!!![Worker]: workerAddr: %s\n", workerAddr)
 
 	// create the context
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)

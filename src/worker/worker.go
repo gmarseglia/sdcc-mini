@@ -73,7 +73,7 @@ func main() {
 	}()
 
 	// notify master
-	err = worker.NotifyWorkerActive(workerListener.Addr().String())
+	err = worker.NotifyWorkerActive(*workerPort)
 	if err != nil {
 		stopComponentsAndExit("Master unreachable")
 	}
