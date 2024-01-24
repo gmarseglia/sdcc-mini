@@ -20,9 +20,10 @@ var (
 
 func setupAddresses() {
 	// Setup WorkerPort
-	utils.SetupField(back.HostAddr, "HostAddr", utils.GetOutboundIP().String())
-	utils.SetupField(back.HostPort, "HostPort", "55557")
-	back.HostFullAddr = fmt.Sprintf("%s:%s", *back.HostAddr, *back.HostPort)
+	utils.SetupField(back.BackPort, "BackPort", "55557")
+	utils.SetupField(worker.HostAddr, "HostAddr", utils.GetOutboundIP().String())
+	utils.SetupField(worker.HostPort, "HostPort", "55557")
+	worker.HostFullAddr = fmt.Sprintf("%s:%s", *worker.HostAddr, *worker.HostPort)
 	utils.SetupField(worker.MasterAddr, "MasterAddr", "0.0.0.0")
 	utils.SetupField(worker.MasterPort, "MasterPort", "55556")
 	worker.MasterFullAddr = fmt.Sprintf("%s:%s", *worker.MasterAddr, *worker.MasterPort)

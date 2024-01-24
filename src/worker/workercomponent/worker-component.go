@@ -5,7 +5,6 @@ import (
 	"flag"
 	"log"
 	pb "mini/proto"
-	"mini/worker/back"
 	"time"
 
 	"google.golang.org/grpc"
@@ -13,6 +12,9 @@ import (
 )
 
 var (
+	HostAddr       = flag.String("HostAddr", "", "The address of the host to advertise.")
+	HostPort       = flag.String("HostPort", "", "The port of the host to advertise.")
+	HostFullAddr   string
 	MasterAddr     = flag.String("MasterAddr", "", "The address to connect to.")
 	MasterPort     = flag.String("MasterPort", "", "The port of the master service.")
 	MasterFullAddr string
@@ -48,14 +50,14 @@ func NotifyWorkerActive() error {
 	}
 
 	// Save workerAddr
-	log.Printf("[Worker]: Address to be advertised to master: %s\n", back.HostFullAddr)
+	log.Printf("[Worker]: Address to be advertised to master: %s\n", HostFullAddr)
 
 	// create the context
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	// contact the server
-	r, err := c.NotifyActiveWorker(ctx, &pb.NotifyRequest{WorkerAddress: back.HostFullAddr})
+	r, err := c.NotifyActiveWorker(ctx, &pb.NotifyRequest{WorkerAddress: HostFullAddr})
 	if err != nil {
 		log.Printf("[Worker]: Could not notify Master. More:\n%v", err)
 		return err
@@ -75,7 +77,7 @@ func PingServer() error {
 	defer cancel()
 
 	// contact the server
-	_, err := c.NotifyPing(ctx, &pb.NotifyRequest{WorkerAddress: back.HostFullAddr})
+	_, err := c.NotifyPing(ctx, &pb.NotifyRequest{WorkerAddress: HostFullAddr})
 
 	if err != nil {
 		log.Printf("[Worker]: Could not ping Master. More:\n%v", err)

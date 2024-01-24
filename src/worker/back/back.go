@@ -15,9 +15,7 @@ import (
 )
 
 var (
-	HostAddr      = flag.String("HostAddr", "", "The address of the host to advertise.")
-	HostPort      = flag.String("HostPort", "", "The port of the host to advertise.")
-	HostFullAddr  string
+	BackPort      = flag.String("BackPort", "", "The port of the back service.")
 	active        int
 	activeChannel = make(chan int, 1000)
 	counter       int
@@ -70,7 +68,7 @@ func debugActive() {
 
 func listen() (net.Listener, error) {
 	// listen to request to a free port
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *HostPort))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *BackPort))
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +84,7 @@ func StartServer() error {
 		log.Printf("[Back server]: Failed to listen.\nMore: %v", err)
 		return err
 	}
-	log.Printf("[Back server]: Back server listening at %s", HostFullAddr)
+	log.Printf("[Back server]: Back server listening at port: %s", *BackPort)
 
 	// create a new server
 	s = grpc.NewServer()
