@@ -174,6 +174,20 @@ The client application will start automatically at container launch.
 
 On Linux, the container can be launched from root directory with the script `./Docker/client/run.sh`.
 
+# Example deploy from Docker Desktop
+
+Deployment example:
+1. Take note of the IP address of the Docker host where the containerized server will be launched, for example `192.168.1.2`. This will be indicated as `server address`.
+2. Run the containarized server:
+    1. Publish the default port `55555` and `55556` to the same ports of the Docker host.
+3. Take note of the IP address of the Docker host where the containarized worker will be launched, for example `192.168.1.10`. This will be indicated as `worker address`.
+4. Run the containarized worker:
+    1. Publish the port `55557` to a free port on the Docker host, for example `33333`. This will be indicated as `worker port`.
+    2. Specify the envoironment variable `MasterAddr` with the value `server address`, in this example `192.168.1.2`.
+    3. Specify the envoironment variable `HostAddr` with the value `worker address`, in this example `192.168.1.10`.
+    4. Specify the envoironment variable `HostPort` with the value `worker port`, in this example `33333`.
+5. Run the containarized client:
+   1. Specify the envoironment variable `FrontAddr` with the value `server address`, in this example `192.168.1.2`.
 
 
 # Architecture 
@@ -182,18 +196,23 @@ On Linux, the container can be launched from root directory with the script `./D
 
 The server is composed of two main components:
 
-1. The front: comunicates with the clients.
-2. The master: comunicates with the workers.
+1. The front: accepts RPC from the clients.
+2. The master: calls RPC to the workers.
 
-The master components takes record of which workers notified themselves and their network address.
+The master components takes record of which workers registered themselves and their network address.
 
-When a worker is chosen by the server and does not reply, then said worker is removed from the list of active workers.
+When a worker is chosen by the server and does not reply, then the said worker is removed from the list of active workers.
 
 ## Workers 
 
-The workers notify themselves to the server via a gRpc exposed by the server, in particular the master component.
+The worker is composed of two main components:
 
-Prior to the notification, the worker has started its own gRpc server which exposes the procedure, this component takes the name of the back. The front component of the server will be the client and the back component of the worker will be the gRpc server.
+1. The back: accepts RPC from the server.
+2. The worker-component: registers itself to the server.
+
+The workers register themselves to the server via a gRpc exposed by the server, in particular to the master component.
+
+Prior to the notification, the worker has to start its own gRpc server which exposes the procedure. The front component of the server will be the client and the back component of the worker will be the gRpc server.
 
 Periodically the worker will check if the master is alive. If not, then the worker will terminate.
 
