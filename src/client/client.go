@@ -101,7 +101,7 @@ func run() {
 	log.Printf("[Client]: Request #%d sent.", id)
 
 	// contact the server
-	r, err := c.Convulution(ctx, &pb.ConvoluteFrontRequest{
+	r, err := c.Convulution(ctx, &pb.ConvolutionFrontRequest{
 		Target: targetProto,
 		Kernel: kernelProto})
 

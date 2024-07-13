@@ -60,6 +60,26 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
 }
 
+func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequest) (*pb.ConvolutionBackReply, error) {
+	// signal as activated
+	active += 1
+	activeChannel <- active
+
+	// log response
+	requestID := in.GetID()
+	log.Printf("[Back server]: Received request #%d", requestID)
+
+	// #TODO: implement convolution
+	result := in.GetTarget()
+
+	// signal as deactivated
+	active -= 1
+	activeChannel <- active
+
+	// send response
+	return &pb.ConvolutionBackReply{Result: result, ID: requestID}, nil
+}
+
 func debugActive() {
 	for active := range activeChannel {
 		log.Printf("[Back server]: Active rpc: %d", active)

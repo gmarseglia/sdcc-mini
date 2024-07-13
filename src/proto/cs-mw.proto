@@ -23,23 +23,23 @@ message Row {
     repeated int32 Values = 1;
 }
 
-message ConvoluteFrontRequest {
+message ConvolutionFrontRequest {
     Matrix Target = 1;
     Matrix Kernel = 2;
 }
 
-message ConvoluteFrontReply {
+message ConvolutionFrontReply {
     Matrix Result = 1;
     int32 ID = 2;
 }
 
-message ConvoluteBackRequest {
+message ConvolutionBackRequest {
     Matrix Target = 1;
     Matrix Kernel = 2;
     int32 ID = 3;
 }
 
-message ConvoluteBackReply {
+message ConvolutionBackReply {
     Matrix Result = 1;
     int32 ID = 2;
 }
@@ -55,13 +55,13 @@ message NotifyReply {
 service Front {
     // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
-    rpc Convulution(ConvoluteFrontRequest) returns (ConvoluteFrontReply) {}
+    rpc Convulution(ConvolutionFrontRequest) returns (ConvolutionFrontReply) {}
 }
 
 service Back {
     // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
-    rpc Convulution(ConvoluteBackRequest) returns (ConvoluteBackReply) {}
+    rpc Convulution(ConvolutionBackRequest) returns (ConvolutionBackReply) {}
 }
 
 service Master {

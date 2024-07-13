@@ -29,7 +29,7 @@ const (
 type FrontClient interface {
 	// #TODO: remove if working
 	Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error)
-	Convulution(ctx context.Context, in *ConvoluteFrontRequest, opts ...grpc.CallOption) (*ConvoluteFrontReply, error)
+	Convulution(ctx context.Context, in *ConvolutionFrontRequest, opts ...grpc.CallOption) (*ConvolutionFrontReply, error)
 }
 
 type frontClient struct {
@@ -49,8 +49,8 @@ func (c *frontClient) Choice(ctx context.Context, in *ChoiceBiRequest, opts ...g
 	return out, nil
 }
 
-func (c *frontClient) Convulution(ctx context.Context, in *ConvoluteFrontRequest, opts ...grpc.CallOption) (*ConvoluteFrontReply, error) {
-	out := new(ConvoluteFrontReply)
+func (c *frontClient) Convulution(ctx context.Context, in *ConvolutionFrontRequest, opts ...grpc.CallOption) (*ConvolutionFrontReply, error) {
+	out := new(ConvolutionFrontReply)
 	err := c.cc.Invoke(ctx, Front_Convulution_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (c *frontClient) Convulution(ctx context.Context, in *ConvoluteFrontRequest
 type FrontServer interface {
 	// #TODO: remove if working
 	Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error)
-	Convulution(context.Context, *ConvoluteFrontRequest) (*ConvoluteFrontReply, error)
+	Convulution(context.Context, *ConvolutionFrontRequest) (*ConvolutionFrontReply, error)
 	mustEmbedUnimplementedFrontServer()
 }
 
@@ -75,7 +75,7 @@ type UnimplementedFrontServer struct {
 func (UnimplementedFrontServer) Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Choice not implemented")
 }
-func (UnimplementedFrontServer) Convulution(context.Context, *ConvoluteFrontRequest) (*ConvoluteFrontReply, error) {
+func (UnimplementedFrontServer) Convulution(context.Context, *ConvolutionFrontRequest) (*ConvolutionFrontReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Convulution not implemented")
 }
 func (UnimplementedFrontServer) mustEmbedUnimplementedFrontServer() {}
@@ -110,7 +110,7 @@ func _Front_Choice_Handler(srv interface{}, ctx context.Context, dec func(interf
 }
 
 func _Front_Convulution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConvoluteFrontRequest)
+	in := new(ConvolutionFrontRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func _Front_Convulution_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: Front_Convulution_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FrontServer).Convulution(ctx, req.(*ConvoluteFrontRequest))
+		return srv.(FrontServer).Convulution(ctx, req.(*ConvolutionFrontRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -158,7 +158,7 @@ const (
 type BackClient interface {
 	// #TODO: remove if working
 	Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error)
-	Convulution(ctx context.Context, in *ConvoluteBackRequest, opts ...grpc.CallOption) (*ConvoluteBackReply, error)
+	Convulution(ctx context.Context, in *ConvolutionBackRequest, opts ...grpc.CallOption) (*ConvolutionBackReply, error)
 }
 
 type backClient struct {
@@ -178,8 +178,8 @@ func (c *backClient) Choice(ctx context.Context, in *ChoiceBiRequest, opts ...gr
 	return out, nil
 }
 
-func (c *backClient) Convulution(ctx context.Context, in *ConvoluteBackRequest, opts ...grpc.CallOption) (*ConvoluteBackReply, error) {
-	out := new(ConvoluteBackReply)
+func (c *backClient) Convulution(ctx context.Context, in *ConvolutionBackRequest, opts ...grpc.CallOption) (*ConvolutionBackReply, error) {
+	out := new(ConvolutionBackReply)
 	err := c.cc.Invoke(ctx, Back_Convulution_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (c *backClient) Convulution(ctx context.Context, in *ConvoluteBackRequest, 
 type BackServer interface {
 	// #TODO: remove if working
 	Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error)
-	Convulution(context.Context, *ConvoluteBackRequest) (*ConvoluteBackReply, error)
+	Convulution(context.Context, *ConvolutionBackRequest) (*ConvolutionBackReply, error)
 	mustEmbedUnimplementedBackServer()
 }
 
@@ -204,7 +204,7 @@ type UnimplementedBackServer struct {
 func (UnimplementedBackServer) Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Choice not implemented")
 }
-func (UnimplementedBackServer) Convulution(context.Context, *ConvoluteBackRequest) (*ConvoluteBackReply, error) {
+func (UnimplementedBackServer) Convulution(context.Context, *ConvolutionBackRequest) (*ConvolutionBackReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Convulution not implemented")
 }
 func (UnimplementedBackServer) mustEmbedUnimplementedBackServer() {}
@@ -239,7 +239,7 @@ func _Back_Choice_Handler(srv interface{}, ctx context.Context, dec func(interfa
 }
 
 func _Back_Convulution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConvoluteBackRequest)
+	in := new(ConvolutionBackRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -251,7 +251,7 @@ func _Back_Convulution_Handler(srv interface{}, ctx context.Context, dec func(in
 		FullMethod: Back_Convulution_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackServer).Convulution(ctx, req.(*ConvoluteBackRequest))
+		return srv.(BackServer).Convulution(ctx, req.(*ConvolutionBackRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
