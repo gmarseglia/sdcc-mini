@@ -61,7 +61,7 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
 }
 
-func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionalLayerBackRequest) (*pb.ConvolutionalLayerBackReply, error) {
+func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.ConvolutionalLayerBackRequest) (*pb.ConvolutionalLayerBackReply, error) {
 	// signal as activated
 	active += 1
 	activeChannel <- active

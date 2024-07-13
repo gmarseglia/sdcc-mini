@@ -27,6 +27,7 @@ var (
 	FrontAddr    = flag.String("FrontAddr", "", "The address to connect to.")
 	FrontPort    = flag.String("FrontPort", "", "The port of the master service.")
 	RequestCount = flag.String("RequestCount", "", "The number of requests to send.")
+	Verbose      = flag.Bool("Verbose", false, "Enable verbose output.")
 	counter      int
 	counterLock  sync.Mutex
 	wg           sync.WaitGroup
@@ -126,7 +127,7 @@ func convolutionalRun() {
 	log.Printf("[Client]: Request #%d sent.", id)
 
 	// contact the server
-	r, err := c.Convulution(ctx, frontRequest)
+	r, err := c.ConvolutionalLayer(ctx, frontRequest)
 
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
@@ -142,7 +143,7 @@ func convolutionalRun() {
 		r.GetID(),
 		time.Since(startTime).Milliseconds())
 
-	if true {
+	if *Verbose {
 		utils.PrettyPrint("Target", target)
 		for _, result := range r.GetResult() {
 			utils.PrettyPrint("Result", utils.ProtoToMatrix(result))

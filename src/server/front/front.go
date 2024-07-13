@@ -77,7 +77,7 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 	}
 }
 
-func (s *FrontServer) Convulution(ctx context.Context, in *pb.ConvolutionalLayerFrontRequest) (*pb.ConvolutionalLayerFrontReply, error) {
+func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.ConvolutionalLayerFrontRequest) (*pb.ConvolutionalLayerFrontReply, error) {
 	// generate ID
 	counterLock.Lock()
 	counter += 1
@@ -115,7 +115,7 @@ func (s *FrontServer) Convulution(ctx context.Context, in *pb.ConvolutionalLayer
 			ID:          int32(id)}
 
 		// contact the server
-		WorkerResponse, err := c.Convulution(ctxInternal, &backRequest)
+		WorkerResponse, err := c.ConvolutionalLayer(ctxInternal, &backRequest)
 
 		if err != nil {
 			// Check if reply is not avaible due to size too big

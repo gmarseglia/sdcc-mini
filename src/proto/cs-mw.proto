@@ -61,13 +61,13 @@ message NotifyReply {
 service Front {
     // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
-    rpc Convulution(ConvolutionalLayerFrontRequest) returns (ConvolutionalLayerFrontReply) {}
+    rpc ConvolutionalLayer(ConvolutionalLayerFrontRequest) returns (ConvolutionalLayerFrontReply) {}
 }
 
 service Back {
     // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
-    rpc Convulution(ConvolutionalLayerBackRequest) returns (ConvolutionalLayerBackReply) {}
+    rpc ConvolutionalLayer(ConvolutionalLayerBackRequest) returns (ConvolutionalLayerBackReply) {}
 }
 
 service Master {

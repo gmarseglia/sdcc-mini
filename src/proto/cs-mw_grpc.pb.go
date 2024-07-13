@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Front_Choice_FullMethodName      = "/mini.Front/Choice"
-	Front_Convulution_FullMethodName = "/mini.Front/Convulution"
+	Front_Choice_FullMethodName             = "/mini.Front/Choice"
+	Front_ConvolutionalLayer_FullMethodName = "/mini.Front/ConvolutionalLayer"
 )
 
 // FrontClient is the client API for Front service.
@@ -29,7 +29,7 @@ const (
 type FrontClient interface {
 	// #TODO: remove if working
 	Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error)
-	Convulution(ctx context.Context, in *ConvolutionalLayerFrontRequest, opts ...grpc.CallOption) (*ConvolutionalLayerFrontReply, error)
+	ConvolutionalLayer(ctx context.Context, in *ConvolutionalLayerFrontRequest, opts ...grpc.CallOption) (*ConvolutionalLayerFrontReply, error)
 }
 
 type frontClient struct {
@@ -49,9 +49,9 @@ func (c *frontClient) Choice(ctx context.Context, in *ChoiceBiRequest, opts ...g
 	return out, nil
 }
 
-func (c *frontClient) Convulution(ctx context.Context, in *ConvolutionalLayerFrontRequest, opts ...grpc.CallOption) (*ConvolutionalLayerFrontReply, error) {
+func (c *frontClient) ConvolutionalLayer(ctx context.Context, in *ConvolutionalLayerFrontRequest, opts ...grpc.CallOption) (*ConvolutionalLayerFrontReply, error) {
 	out := new(ConvolutionalLayerFrontReply)
-	err := c.cc.Invoke(ctx, Front_Convulution_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Front_ConvolutionalLayer_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (c *frontClient) Convulution(ctx context.Context, in *ConvolutionalLayerFro
 type FrontServer interface {
 	// #TODO: remove if working
 	Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error)
-	Convulution(context.Context, *ConvolutionalLayerFrontRequest) (*ConvolutionalLayerFrontReply, error)
+	ConvolutionalLayer(context.Context, *ConvolutionalLayerFrontRequest) (*ConvolutionalLayerFrontReply, error)
 	mustEmbedUnimplementedFrontServer()
 }
 
@@ -75,8 +75,8 @@ type UnimplementedFrontServer struct {
 func (UnimplementedFrontServer) Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Choice not implemented")
 }
-func (UnimplementedFrontServer) Convulution(context.Context, *ConvolutionalLayerFrontRequest) (*ConvolutionalLayerFrontReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Convulution not implemented")
+func (UnimplementedFrontServer) ConvolutionalLayer(context.Context, *ConvolutionalLayerFrontRequest) (*ConvolutionalLayerFrontReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConvolutionalLayer not implemented")
 }
 func (UnimplementedFrontServer) mustEmbedUnimplementedFrontServer() {}
 
@@ -109,20 +109,20 @@ func _Front_Choice_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Front_Convulution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Front_ConvolutionalLayer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ConvolutionalLayerFrontRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FrontServer).Convulution(ctx, in)
+		return srv.(FrontServer).ConvolutionalLayer(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Front_Convulution_FullMethodName,
+		FullMethod: Front_ConvolutionalLayer_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FrontServer).Convulution(ctx, req.(*ConvolutionalLayerFrontRequest))
+		return srv.(FrontServer).ConvolutionalLayer(ctx, req.(*ConvolutionalLayerFrontRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -139,8 +139,8 @@ var Front_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Front_Choice_Handler,
 		},
 		{
-			MethodName: "Convulution",
-			Handler:    _Front_Convulution_Handler,
+			MethodName: "ConvolutionalLayer",
+			Handler:    _Front_ConvolutionalLayer_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -148,8 +148,8 @@ var Front_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	Back_Choice_FullMethodName      = "/mini.Back/Choice"
-	Back_Convulution_FullMethodName = "/mini.Back/Convulution"
+	Back_Choice_FullMethodName             = "/mini.Back/Choice"
+	Back_ConvolutionalLayer_FullMethodName = "/mini.Back/ConvolutionalLayer"
 )
 
 // BackClient is the client API for Back service.
@@ -158,7 +158,7 @@ const (
 type BackClient interface {
 	// #TODO: remove if working
 	Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error)
-	Convulution(ctx context.Context, in *ConvolutionalLayerBackRequest, opts ...grpc.CallOption) (*ConvolutionalLayerBackReply, error)
+	ConvolutionalLayer(ctx context.Context, in *ConvolutionalLayerBackRequest, opts ...grpc.CallOption) (*ConvolutionalLayerBackReply, error)
 }
 
 type backClient struct {
@@ -178,9 +178,9 @@ func (c *backClient) Choice(ctx context.Context, in *ChoiceBiRequest, opts ...gr
 	return out, nil
 }
 
-func (c *backClient) Convulution(ctx context.Context, in *ConvolutionalLayerBackRequest, opts ...grpc.CallOption) (*ConvolutionalLayerBackReply, error) {
+func (c *backClient) ConvolutionalLayer(ctx context.Context, in *ConvolutionalLayerBackRequest, opts ...grpc.CallOption) (*ConvolutionalLayerBackReply, error) {
 	out := new(ConvolutionalLayerBackReply)
-	err := c.cc.Invoke(ctx, Back_Convulution_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Back_ConvolutionalLayer_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func (c *backClient) Convulution(ctx context.Context, in *ConvolutionalLayerBack
 type BackServer interface {
 	// #TODO: remove if working
 	Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error)
-	Convulution(context.Context, *ConvolutionalLayerBackRequest) (*ConvolutionalLayerBackReply, error)
+	ConvolutionalLayer(context.Context, *ConvolutionalLayerBackRequest) (*ConvolutionalLayerBackReply, error)
 	mustEmbedUnimplementedBackServer()
 }
 
@@ -204,8 +204,8 @@ type UnimplementedBackServer struct {
 func (UnimplementedBackServer) Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Choice not implemented")
 }
-func (UnimplementedBackServer) Convulution(context.Context, *ConvolutionalLayerBackRequest) (*ConvolutionalLayerBackReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Convulution not implemented")
+func (UnimplementedBackServer) ConvolutionalLayer(context.Context, *ConvolutionalLayerBackRequest) (*ConvolutionalLayerBackReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConvolutionalLayer not implemented")
 }
 func (UnimplementedBackServer) mustEmbedUnimplementedBackServer() {}
 
@@ -238,20 +238,20 @@ func _Back_Choice_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Back_Convulution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Back_ConvolutionalLayer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ConvolutionalLayerBackRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BackServer).Convulution(ctx, in)
+		return srv.(BackServer).ConvolutionalLayer(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Back_Convulution_FullMethodName,
+		FullMethod: Back_ConvolutionalLayer_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackServer).Convulution(ctx, req.(*ConvolutionalLayerBackRequest))
+		return srv.(BackServer).ConvolutionalLayer(ctx, req.(*ConvolutionalLayerBackRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -268,8 +268,8 @@ var Back_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Back_Choice_Handler,
 		},
 		{
-			MethodName: "Convulution",
-			Handler:    _Back_Convulution_Handler,
+			MethodName: "ConvolutionalLayer",
+			Handler:    _Back_ConvolutionalLayer_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
