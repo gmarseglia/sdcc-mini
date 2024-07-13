@@ -20,7 +20,7 @@ message Matrix {
 }
 
 message Row {
-    repeated int32 Values = 1;
+    repeated float Values = 1;
 }
 
 message ConvolutionFrontRequest {

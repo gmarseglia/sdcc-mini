@@ -72,28 +72,18 @@ func setupField(mandatory bool, field *string, envName string, defaultValue stri
 	}
 }
 
-func PrettyPrint(title string, matrix [][]int32) {
-	maxWidth := 0
-	for _, row := range matrix {
-		for _, value := range row {
-			width := len(fmt.Sprintf("%d", value))
-			if width > maxWidth {
-				maxWidth = width
-			}
-		}
-	}
-
+func PrettyPrint(title string, matrix [][]float32) {
 	// Print the matrix with pretty formatting
 	fmt.Println(title)
 	for _, row := range matrix {
 		for _, value := range row {
-			fmt.Printf("%*d ", maxWidth, value)
+			fmt.Printf("%.4f ", value)
 		}
 		fmt.Println()
 	}
 }
 
-func MatrixToProto(matrix [][]int32) *pb.Matrix {
+func MatrixToProto(matrix [][]float32) *pb.Matrix {
 	protoMatrix := &pb.Matrix{}
 	for _, row := range matrix {
 		protoRow := &pb.Row{}
@@ -105,10 +95,10 @@ func MatrixToProto(matrix [][]int32) *pb.Matrix {
 	return protoMatrix
 }
 
-func ProtoToMatrix(protoMatrix *pb.Matrix) [][]int32 {
-	matrix := [][]int32{}
+func ProtoToMatrix(protoMatrix *pb.Matrix) [][]float32 {
+	matrix := [][]float32{}
 	for _, protoRow := range protoMatrix.Rows {
-		row := []int32{}
+		row := []float32{}
 		for _, value := range protoRow.Values {
 			row = append(row, value)
 		}
@@ -117,20 +107,20 @@ func ProtoToMatrix(protoMatrix *pb.Matrix) [][]int32 {
 	return matrix
 }
 
-func GenerateEmptyMatrix(height int, width int) [][]int32 {
-	result := make([][]int32, height)
+func GenerateEmptyMatrix(height int, width int) [][]float32 {
+	result := make([][]float32, height)
 	for i := 0; i < height; i++ {
-		result[i] = make([]int32, width)
+		result[i] = make([]float32, width)
 	}
 	return result
 }
 
-func GenerateRandomMatrix(targetSize int) [][]int32 {
-	result := make([][]int32, targetSize)
-	for i := 0; i < targetSize; i++ {
-		result[i] = make([]int32, targetSize)
-		for j := 0; j < targetSize; j++ {
-			result[i][j] = int32(rand.Intn(256))
+func GenerateRandomMatrix(height int, width int) [][]float32 {
+	result := make([][]float32, height)
+	for i := 0; i < height; i++ {
+		result[i] = make([]float32, width)
+		for j := 0; j < width; j++ {
+			result[i][j] = float32(rand.Float32())
 		}
 	}
 	return result

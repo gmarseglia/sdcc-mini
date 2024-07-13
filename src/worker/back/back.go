@@ -88,9 +88,9 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequ
 	// Deep copy + padding
 	paddedHeight := padTop + len(target) + padBottom
 	paddedWidth := padLeft + len(target[0]) + padRight
-	input := make([][]int32, paddedHeight)
+	input := make([][]float32, paddedHeight)
 	for i := 0; i < paddedHeight; i++ {
-		input[i] = make([]int32, paddedWidth)
+		input[i] = make([]float32, paddedWidth)
 		for j := 0; j < paddedWidth; j++ {
 			if (i < padTop) || (i >= padTop+len(target)) || (j < padLeft) || (j >= padLeft+len(target[0])) {
 				input[i][j] = 0
@@ -103,7 +103,7 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequ
 	// Apply convolution
 	for i := 0; i < len(target); i++ {
 		for j := 0; j < len(target[0]); j++ {
-			var newTarget int32 = 0
+			var newTarget float32 = 0
 			for kw := 0; kw < kernelHeight; kw++ {
 				for kh := 0; kh < kernelWidth; kh++ {
 					newTarget += input[i+kh][j+kw] * kernel[kh][kw]
@@ -141,11 +141,11 @@ func (s *backServer) MaxPool(ctx context.Context, in *pb.MaxPoolBackRequest) (*p
 	// Max pool
 	poolSize := int(in.GetSize())
 	// pooledHeight := int(math.Ceil(float64(len(target)) / float64(poolSize)))
-	pooledHeight := targetHeight / poolSize
+	pooledHeight := int(targetHeight / poolSize)
 	if targetHeight%poolSize != 0 {
 		pooledHeight += 1
 	}
-	pooledWidth := targetWidth / poolSize
+	pooledWidth := int(targetWidth / poolSize)
 	if targetWidth%poolSize != 0 {
 		pooledWidth += 1
 	}
@@ -154,7 +154,7 @@ func (s *backServer) MaxPool(ctx context.Context, in *pb.MaxPoolBackRequest) (*p
 
 	for pi := 0; pi < pooledHeight; pi++ {
 		for pj := 0; pj < pooledWidth; pj++ {
-			var max int32 = 0
+			var max float32 = 0
 			for i := 0; i < poolSize; i++ {
 				for j := 0; j < poolSize; j++ {
 					ti := pi*poolSize + i

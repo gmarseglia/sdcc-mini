@@ -90,8 +90,8 @@ func convolutionRun(powerFactor int) {
 	kernelSize := 7
 
 	// Serialie the matrices
-	targetProto := utils.MatrixToProto(utils.GenerateRandomMatrix(targetSize))
-	kernelProto := utils.MatrixToProto(utils.GenerateRandomMatrix(kernelSize))
+	targetProto := utils.MatrixToProto(utils.GenerateRandomMatrix(targetSize, targetSize))
+	kernelProto := utils.MatrixToProto(utils.GenerateRandomMatrix(kernelSize, kernelSize))
 
 	// Internal ID
 	counterLock.Lock()
@@ -143,7 +143,7 @@ func maxPoolRun(powerFactor int) {
 		maxPoolSize = 2
 	}
 
-	target := utils.GenerateRandomMatrix(targetSize)
+	target := utils.GenerateRandomMatrix(targetSize, targetSize)
 
 	// Serialie the matrices
 	targetProto := utils.MatrixToProto(target)
@@ -220,8 +220,8 @@ func main() {
 	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
 		// go choice()
-		// go convolutionRun(i)
-		go maxPoolRun(2)
+		go convolutionRun(i)
+		// go maxPoolRun(2)
 	}
 
 	// wait
