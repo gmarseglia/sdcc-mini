@@ -2,7 +2,6 @@ package back
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"math"
@@ -16,9 +15,9 @@ import (
 )
 
 var (
-	BackPort      = flag.String("BackPort", "", "The port of the back service.")
-	active        int
-	activeChannel = make(chan int, 1000)
+	HostPort      string = ""
+	Active        int
+	ActiveChannel = make(chan int, 1000)
 	counter       int
 	counterLock   sync.Mutex
 	Prng          = rand.New(rand.NewSource(14))
@@ -32,8 +31,8 @@ type backServer struct {
 // SayHello implements helloworld.GreeterServer
 func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
 	// signal as activated
-	active += 1
-	activeChannel <- active
+	Active += 1
+	ActiveChannel <- Active
 
 	// log response
 	counterLock.Lock()
@@ -43,7 +42,7 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 	log.Printf("[Back server]: Received request #%d", counter)
 
 	// sleep
-	utils.SimulatedCPUIntensiveFunction(1000, &active, 1)
+	utils.SimulatedCPUIntensiveFunction(1000, &Active, 1)
 
 	// randomly choose response
 	var response string
@@ -54,8 +53,8 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 	}
 
 	// signal as deactivated
-	active -= 1
-	activeChannel <- active
+	Active -= 1
+	ActiveChannel <- Active
 
 	// send response
 	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
@@ -63,8 +62,8 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 
 func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.ConvolutionalLayerBackRequest) (*pb.ConvolutionalLayerBackReply, error) {
 	// signal as activated
-	active += 1
-	activeChannel <- active
+	Active += 1
+	ActiveChannel <- Active
 
 	// log response
 	requestID := in.GetID()
@@ -192,22 +191,22 @@ func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolutiona
 	}
 
 	// signal as deactivated
-	active -= 1
-	activeChannel <- active
+	Active -= 1
+	ActiveChannel <- Active
 
 	// send response
 	return backReply, nil
 }
 
 func debugActive() {
-	for active := range activeChannel {
-		log.Printf("[Back server]: Active rpc: %d", active)
+	for Active := range ActiveChannel {
+		log.Printf("[Back server]: Active rpc: %d", Active)
 	}
 }
 
 func listen() (net.Listener, error) {
 	// listen to request to a free port
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *BackPort))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", HostPort))
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +222,7 @@ func StartServer() error {
 		log.Printf("[Back server]: Failed to listen.\nMore: %v", err)
 		return err
 	}
-	log.Printf("[Back server]: Back server listening at port: %s", *BackPort)
+	log.Printf("[Back server]: Back server listening at port: %s", HostPort)
 
 	// create a new server
 	s = grpc.NewServer()
@@ -231,7 +230,7 @@ func StartServer() error {
 	// register the server
 	pb.RegisterBackServer(s, &backServer{})
 
-	// start debugging active level
+	// start debugging Active level
 	go debugActive()
 
 	// serve the request

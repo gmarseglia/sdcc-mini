@@ -5,6 +5,7 @@ import (
 	"flag"
 	"log"
 	pb "mini/proto"
+	"mini/worker/back"
 	"time"
 
 	"google.golang.org/grpc"
@@ -69,15 +70,21 @@ func NotifyWorkerActive() error {
 	return nil
 }
 
-func PingServer() error {
+func PingServer(timeout int, usageCPU float32) error {
 	dialServerAndSetClient()
 
 	// create the context
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout)*4)
 	defer cancel()
 
+	pingRequest := &pb.PingRequest{
+		WorkerAddress: HostFullAddr,
+		QueueSize:     int32(back.Active),
+		UsageCPU:      usageCPU,
+	}
+
 	// contact the server
-	_, err := c.NotifyPing(ctx, &pb.NotifyRequest{WorkerAddress: HostFullAddr})
+	_, err := c.NotifyPing(ctx, pingRequest)
 
 	if err != nil {
 		log.Printf("[Worker]: Could not ping Master. More:\n%v", err)

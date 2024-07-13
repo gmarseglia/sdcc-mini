@@ -288,7 +288,7 @@ const (
 type MasterClient interface {
 	NotifyActiveWorker(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
 	NotifyDeactiveWorker(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
-	NotifyPing(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
+	NotifyPing(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingReply, error)
 }
 
 type masterClient struct {
@@ -317,8 +317,8 @@ func (c *masterClient) NotifyDeactiveWorker(ctx context.Context, in *NotifyReque
 	return out, nil
 }
 
-func (c *masterClient) NotifyPing(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error) {
-	out := new(NotifyReply)
+func (c *masterClient) NotifyPing(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingReply, error) {
+	out := new(PingReply)
 	err := c.cc.Invoke(ctx, Master_NotifyPing_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -332,7 +332,7 @@ func (c *masterClient) NotifyPing(ctx context.Context, in *NotifyRequest, opts .
 type MasterServer interface {
 	NotifyActiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error)
 	NotifyDeactiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error)
-	NotifyPing(context.Context, *NotifyRequest) (*NotifyReply, error)
+	NotifyPing(context.Context, *PingRequest) (*PingReply, error)
 	mustEmbedUnimplementedMasterServer()
 }
 
@@ -346,7 +346,7 @@ func (UnimplementedMasterServer) NotifyActiveWorker(context.Context, *NotifyRequ
 func (UnimplementedMasterServer) NotifyDeactiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NotifyDeactiveWorker not implemented")
 }
-func (UnimplementedMasterServer) NotifyPing(context.Context, *NotifyRequest) (*NotifyReply, error) {
+func (UnimplementedMasterServer) NotifyPing(context.Context, *PingRequest) (*PingReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NotifyPing not implemented")
 }
 func (UnimplementedMasterServer) mustEmbedUnimplementedMasterServer() {}
@@ -399,7 +399,7 @@ func _Master_NotifyDeactiveWorker_Handler(srv interface{}, ctx context.Context, 
 }
 
 func _Master_NotifyPing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NotifyRequest)
+	in := new(PingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -411,7 +411,7 @@ func _Master_NotifyPing_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: Master_NotifyPing_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).NotifyPing(ctx, req.(*NotifyRequest))
+		return srv.(MasterServer).NotifyPing(ctx, req.(*PingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

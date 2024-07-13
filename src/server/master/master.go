@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	pb "mini/proto"
 	"net"
 	"sync"
@@ -14,12 +15,13 @@ import (
 )
 
 var (
-	MasterPort     = flag.String("MasterPort", "", "The port for master service.")
-	WorkerListLock sync.RWMutex
-	WorkerList     []string
-	workerCounter  int
-	workerChannel  = make(chan int, 1000)
-	s              *grpc.Server
+	MasterPort        = flag.String("MasterPort", "", "The port for master service.")
+	WorkerList        []string
+	WorkerListLock    sync.RWMutex
+	WorkerCostMap     = make(map[string]float32)
+	WorkerCostMapLock sync.RWMutex
+	workerChannel     = make(chan int, 1000)
+	s                 *grpc.Server
 )
 
 type MasterServer struct {
@@ -38,11 +40,18 @@ func (s *MasterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequ
 }
 
 // NotifyPing implementation
-func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.NotifyRequest) (*pb.NotifyReply, error) {
-	// log.Printf("[Master DEV]: ping from %s.", in.GetWorkerAddress())
+func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
+	// log.Printf("[Master]: ping from %s: (QueueSize: %d, UsageCPU: %.2f).", in.GetWorkerAddress(), in.GetQueueSize(), in.GetUsageCPU())
+
+	// Compute cost of the worker
+	var cost float32 = in.GetUsageCPU() * (float32(in.QueueSize) + 1)
+	WorkerCostMapLock.Lock()
+	WorkerCostMap[in.GetWorkerAddress()] = cost
+	WorkerCostMapLock.Unlock()
+	log.Printf("[Master]: Cost of worker %s: %.2f", in.GetWorkerAddress(), cost)
 
 	// send response
-	return &pb.NotifyReply{Result: "PING OK"}, nil
+	return &pb.PingReply{Result: "PING OK"}, nil
 }
 
 func AddWorker(targetWorkerAddr string) string {
@@ -77,16 +86,29 @@ func RemoveWorker(targetWorkerAddr string) {
 }
 
 func GetWorker() string {
-	for len(WorkerList) == 0 {
+	// Wait for workers to be added
+	for len(WorkerCostMap) == 0 {
 		time.Sleep(time.Second * 1)
 	}
-	WorkerListLock.RLock()
-	// circular workerCounter
-	workerCounter = (workerCounter + 1) % len(WorkerList)
-	addr := WorkerList[workerCounter]
-	WorkerListLock.RUnlock()
 
-	return addr
+	WorkerCostMapLock.Lock()
+
+	// Find the cheapest worker
+	var cheapestWorker string
+	var lowestCost float32 = float32(math.Inf(1))
+	for workerAddr, cost := range WorkerCostMap {
+		log.Printf("[Master]: Cost of worker %s: %.2f", workerAddr, cost)
+		if cost < lowestCost {
+			lowestCost = cost
+			cheapestWorker = workerAddr
+		}
+	}
+	// Increase the cost to avoid overuse on burst traffic
+	WorkerCostMap[cheapestWorker] = lowestCost * 1.5
+
+	WorkerCostMapLock.Unlock()
+
+	return cheapestWorker
 }
 
 func monitorWorker() {

@@ -12,15 +12,18 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/shirou/gopsutil/cpu"
 )
 
 var (
-	wg = sync.WaitGroup{}
+	PingTimeout  = flag.Int("PingTimeout", 1, "The ping timeout in seconds.")
+	FakeCPUScale = flag.Float64("FakeCPUScale", 1, "The scale of the fake CPU usage.")
+	wg           = sync.WaitGroup{}
 )
 
 func setupFields() {
 	// Setup WorkerPort
-	utils.SetupFieldOptional(back.BackPort, "BackPort", "55557")
 	utils.SetupFieldOptional(worker.HostAddr, "HostAddr", utils.GetOutboundIP().String())
 	utils.SetupFieldOptional(worker.HostPort, "HostPort", "55557")
 	worker.HostFullAddr = fmt.Sprintf("%s:%s", *worker.HostAddr, *worker.HostPort)
@@ -30,6 +33,7 @@ func setupFields() {
 	})
 	utils.SetupFieldOptional(worker.MasterPort, "MasterPort", "55556")
 	worker.MasterFullAddr = fmt.Sprintf("%s:%s", *worker.MasterAddr, *worker.MasterPort)
+	back.HostPort = *worker.HostPort
 }
 
 func stopComponentsAndExit(message string) {
@@ -80,8 +84,10 @@ func main() {
 
 	// infite loop with server pings
 	for {
-		time.Sleep(time.Second * 10)
-		err := worker.PingServer()
+		// Prepare the request
+		percentages, _ := cpu.Percent(time.Second, false)
+		time.Sleep(time.Second * time.Duration(*PingTimeout-1))
+		err := worker.PingServer(*PingTimeout, float32(percentages[0]*(*FakeCPUScale)))
 		if err != nil {
 			stopComponentsAndExit("Ping failed")
 		}

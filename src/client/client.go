@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"sync"
@@ -76,7 +77,7 @@ func choice() {
 	wg.Done()
 }
 
-func convolutionalRun() {
+func convolutionalRun(param int) {
 	// Internal ID
 	counterLock.Lock()
 	counter++
@@ -85,8 +86,8 @@ func convolutionalRun() {
 
 	// Settings
 	targetSize := 1000
-	kernelNum := 100
-	kernelSize := 0
+	kernelNum := int(10 * math.Pow(float64(10-param), 2))
+	kernelSize := 3
 	avgPoolSize := 1000
 	useKernels := kernelSize > 0
 	useSigmoid := true
@@ -182,7 +183,8 @@ func main() {
 	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
 		// go choice()
-		go convolutionalRun()
+		time.Sleep(time.Millisecond * time.Duration(100*i))
+		go convolutionalRun(i)
 	}
 
 	// wait

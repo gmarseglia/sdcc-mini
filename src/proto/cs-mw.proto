@@ -50,9 +50,19 @@ message ConvolutionalLayerBackReply {
     int32 ID = 2;
 }
 
+message PingRequest {
+    string WorkerAddress = 1;
+    int32 QueueSize = 2;
+    float UsageCPU = 3;
+}
+
+message PingReply {
+    string Result = 1;
+}
+
 message NotifyRequest {
-        string WorkerAddress = 1;
-    }
+    string WorkerAddress = 1;
+}
 
 message NotifyReply {
     string Result = 1;
@@ -73,5 +83,5 @@ service Back {
 service Master {
     rpc NotifyActiveWorker(NotifyRequest) returns (NotifyReply) {}
     rpc NotifyDeactiveWorker(NotifyRequest) returns (NotifyReply) {}
-    rpc NotifyPing(NotifyRequest) returns (NotifyReply) {}
+    rpc NotifyPing(PingRequest) returns (PingReply) {}
 }
