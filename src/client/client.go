@@ -83,15 +83,16 @@ func convolutionalRun() {
 	counterLock.Unlock()
 
 	// Settings
-	targetSize := 1000
-	kernelNum := 2
+	targetSize := 4
+	kernelNum := 0
 	kernelSize := 3
-	AvgPoolSize := targetSize
+	avgPoolSize := 2
+	useKernels := false
 	useSigmoid := true
 
 	exptecedSize := max(
 		(targetSize*targetSize*4)+(kernelSize*kernelSize*kernelNum)*4,
-		targetSize*targetSize*kernelNum*4/(AvgPoolSize*AvgPoolSize))
+		targetSize*targetSize*kernelNum*4/(avgPoolSize*avgPoolSize))
 
 	log.Printf("[Client]: Request #%d -> Expected size: %d", id, exptecedSize)
 
@@ -111,7 +112,8 @@ func convolutionalRun() {
 		frontRequest.Kernel = append(frontRequest.Kernel, utils.MatrixToProto(utils.GenerateRandomMatrix(kernelSize, kernelSize)))
 	}
 
-	frontRequest.AvgPoolSize = int32(AvgPoolSize)
+	frontRequest.AvgPoolSize = int32(avgPoolSize)
+	frontRequest.UseKernels = useKernels
 	frontRequest.UseSigmoid = useSigmoid
 
 	// create the context
@@ -139,6 +141,13 @@ func convolutionalRun() {
 		id,
 		r.GetID(),
 		time.Since(startTime).Milliseconds())
+
+	if true {
+		utils.PrettyPrint("Target", target)
+		for _, result := range r.GetResult() {
+			utils.PrettyPrint("Result", utils.ProtoToMatrix(result))
+		}
+	}
 
 	wg.Done()
 }
