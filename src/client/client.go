@@ -84,13 +84,14 @@ func convolutionalRun() {
 
 	// Settings
 	targetSize := 1000
-	kernelNum := 200
+	kernelNum := 2
 	kernelSize := 3
-	avgPoolStride := 1000
+	AvgPoolSize := targetSize
+	useSigmoid := true
 
 	exptecedSize := max(
 		(targetSize*targetSize*4)+(kernelSize*kernelSize*kernelNum)*4,
-		targetSize*targetSize*kernelNum*4/(avgPoolStride*avgPoolStride))
+		targetSize*targetSize*kernelNum*4/(AvgPoolSize*AvgPoolSize))
 
 	log.Printf("[Client]: Request #%d -> Expected size: %d", id, exptecedSize)
 
@@ -100,7 +101,7 @@ func convolutionalRun() {
 		return
 	}
 
-	// Serialie the matrices
+	// Produce the request
 	frontRequest := &pb.ConvolutionalLayerFrontRequest{}
 
 	target := utils.GenerateRandomMatrix(targetSize, targetSize)
@@ -110,7 +111,8 @@ func convolutionalRun() {
 		frontRequest.Kernel = append(frontRequest.Kernel, utils.MatrixToProto(utils.GenerateRandomMatrix(kernelSize, kernelSize)))
 	}
 
-	frontRequest.AvgPoolStride = int32(avgPoolStride)
+	frontRequest.AvgPoolSize = int32(AvgPoolSize)
+	frontRequest.UseSigmoid = useSigmoid
 
 	// create the context
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)

@@ -73,6 +73,8 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionalLayerB
 	// Prepare reply
 	backReply := &pb.ConvolutionalLayerBackReply{ID: requestID}
 
+	useSigmoid := in.GetUseSigmoid()
+
 	// Padding
 	kernelWidth := len(utils.ProtoToMatrix(in.Kernel[0]))
 	kernelHeight := len(utils.ProtoToMatrix(in.Kernel[0])[0])
@@ -114,13 +116,17 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionalLayerB
 						newTarget += input[i+kh][j+kw] * kernel[kh][kw]
 					}
 				}
-				// Apply sigmoid
-				convoluted[i][j] = float32(1.0 / (1.0 + math.Exp(float64(-newTarget))))
+				if useSigmoid {
+					// Apply sigmoid
+					convoluted[i][j] = float32(1.0 / (1.0 + math.Exp(float64(-newTarget))))
+				} else {
+					convoluted[i][j] = newTarget
+				}
 			}
 		}
 
 		// Compute size after pooling
-		poolSize := int(in.GetAvgPoolStride())
+		poolSize := int(in.GetAvgPoolSize())
 		if poolSize > 1 {
 			pooledHeight := int(targetHeight / poolSize)
 			pooledWidth := int(targetWidth / poolSize)

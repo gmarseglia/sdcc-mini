@@ -26,7 +26,8 @@ message Row {
 message ConvolutionalLayerFrontRequest {
     Matrix Target = 1;
     repeated Matrix Kernel = 2;
-    int32 AvgPoolStride = 3;
+    int32 AvgPoolSize = 3;
+    bool UseSigmoid = 4;
 }
 
 message ConvolutionalLayerFrontReply {
@@ -37,8 +38,9 @@ message ConvolutionalLayerFrontReply {
 message ConvolutionalLayerBackRequest {
     Matrix Target = 1;
     repeated Matrix Kernel = 2;
-    int32 AvgPoolStride = 4;
-    int32 ID = 3;
+    int32 AvgPoolSize = 3;
+    bool UseSigmoid = 4;
+    int32 ID = 5;
 }
 
 message ConvolutionalLayerBackReply {

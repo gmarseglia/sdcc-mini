@@ -109,10 +109,10 @@ func (s *FrontServer) Convulution(ctx context.Context, in *pb.ConvolutionalLayer
 
 		// Create the back request
 		backRequest := pb.ConvolutionalLayerBackRequest{
-			Target:        in.GetTarget(),
-			Kernel:        in.GetKernel(),
-			AvgPoolStride: in.GetAvgPoolStride(),
-			ID:            int32(id)}
+			Target:      in.GetTarget(),
+			Kernel:      in.GetKernel(),
+			AvgPoolSize: in.GetAvgPoolSize(),
+			ID:          int32(id)}
 
 		// contact the server
 		WorkerResponse, err := c.Convulution(ctxInternal, &backRequest)
