@@ -84,12 +84,6 @@ func (s *FrontServer) Convulution(ctx context.Context, in *pb.ConvolutionFrontRe
 
 	log.Printf("[Front]: Request #%d started.", id)
 
-	// #TODO: remove if working
-	// target := utils.ProtoToMatrix(in.Target)
-	// kernel := utils.ProtoToMatrix(in.Kernel)
-	// utils.PrettyPrint("Target Matrix", target)
-	// utils.PrettyPrint("Kernel Matrix", kernel)
-
 	for {
 		// get worker
 		addr := master.GetWorker()
@@ -125,12 +119,57 @@ func (s *FrontServer) Convulution(ctx context.Context, in *pb.ConvolutionFrontRe
 
 		log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms", id, WorkerResponse.GetID(), time.Since(startTime).Milliseconds())
 
-		// #TODO: remove if working
-		// result := utils.ProtoToMatrix(WorkerResponse.GetResult())
-		// utils.PrettyPrint("Result Matrix", result)
-
 		// send response
 		return &pb.ConvolutionFrontReply{Result: WorkerResponse.GetResult(), ID: int32(id)}, nil
+	}
+}
+
+func (s *FrontServer) MaxPool(ctx context.Context, in *pb.MaxPoolFrontRequest) (*pb.MaxPoolFrontReply, error) {
+	// generate ID
+	counterLock.Lock()
+	counter += 1
+	var id = counter
+	counterLock.Unlock()
+
+	log.Printf("[Front]: Request #%d started.", id)
+
+	for {
+		// get worker
+		addr := master.GetWorker()
+
+		// Set up a connection to the gRPC server
+		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Fatalf("[Front]: Did not connect: %v", err)
+		}
+		defer conn.Close()
+
+		// create the client object
+		c := pb.NewBackClient(conn)
+
+		// create the context
+		ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+		defer cancel()
+
+		// time the call
+		startTime := time.Now()
+
+		// Create the back request
+		backRequest := pb.MaxPoolBackRequest{Target: in.GetTarget(), Size: in.GetSize(), ID: int32(id)}
+
+		// contact the server
+		WorkerResponse, err := c.MaxPool(ctxInternal, &backRequest)
+		if err != nil {
+			// log.Printf("could not greet: %v", err)
+			log.Printf("[Front]: %s is unreachable.", addr)
+			master.RemoveWorker(addr)
+			continue
+		}
+
+		log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms", id, WorkerResponse.GetID(), time.Since(startTime).Milliseconds())
+
+		// send response
+		return &pb.MaxPoolFrontReply{Result: WorkerResponse.GetResult(), ID: int32(id)}, nil
 	}
 }
 

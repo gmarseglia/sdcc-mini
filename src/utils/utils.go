@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"net"
 	"os"
 	"time"
@@ -114,4 +115,23 @@ func ProtoToMatrix(protoMatrix *pb.Matrix) [][]int32 {
 		matrix = append(matrix, row)
 	}
 	return matrix
+}
+
+func GenerateEmptyMatrix(height int, width int) [][]int32 {
+	result := make([][]int32, height)
+	for i := 0; i < height; i++ {
+		result[i] = make([]int32, width)
+	}
+	return result
+}
+
+func GenerateRandomMatrix(targetSize int) [][]int32 {
+	result := make([][]int32, targetSize)
+	for i := 0; i < targetSize; i++ {
+		result[i] = make([]int32, targetSize)
+		for j := 0; j < targetSize; j++ {
+			result[i][j] = int32(rand.Intn(256))
+		}
+	}
+	return result
 }

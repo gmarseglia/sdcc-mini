@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
 	"os"
 	"strconv"
 	"sync"
@@ -76,7 +75,7 @@ func choice() {
 	wg.Done()
 }
 
-func run(powerFactor int) {
+func convolutionRun(powerFactor int) {
 	// Initialize the matrixes
 	// target := [][]int32{
 	// 	{1, 2, 3},
@@ -90,27 +89,9 @@ func run(powerFactor int) {
 	targetSize := int(math.Pow(2, float64(powerFactor)))
 	kernelSize := 7
 
-	target := make([][]int32, targetSize)
-	for i := 0; i < targetSize; i++ {
-		target[i] = make([]int32, targetSize)
-		for j := 0; j < targetSize; j++ {
-			target[i][j] = int32(rand.Intn(256))
-		}
-	}
-
-	kernel := make([][]int32, kernelSize)
-	for i := 0; i < kernelSize; i++ {
-		kernel[i] = make([]int32, kernelSize)
-		for j := 0; j < kernelSize; j++ {
-			kernel[i][j] = int32(rand.Intn(256))
-		}
-	}
-	// utils.PrettyPrint("Target Matrix", target)
-	// utils.PrettyPrint("Kernel Matrix", kernel)
-
 	// Serialie the matrices
-	targetProto := utils.MatrixToProto(target)
-	kernelProto := utils.MatrixToProto(kernel)
+	targetProto := utils.MatrixToProto(utils.GenerateRandomMatrix(targetSize))
+	kernelProto := utils.MatrixToProto(utils.GenerateRandomMatrix(kernelSize))
 
 	// Internal ID
 	counterLock.Lock()
@@ -152,6 +133,64 @@ func run(powerFactor int) {
 	wg.Done()
 }
 
+func maxPoolRun(powerFactor int) {
+
+	targetSize := int(math.Pow(2, float64(powerFactor)))
+	var maxPoolSize int
+	if targetSize < 2 {
+		maxPoolSize = 1
+	} else {
+		maxPoolSize = 2
+	}
+
+	target := utils.GenerateRandomMatrix(targetSize)
+
+	// Serialie the matrices
+	targetProto := utils.MatrixToProto(target)
+
+	// Internal ID
+	counterLock.Lock()
+	counter++
+	id := counter
+	counterLock.Unlock()
+
+	// create the context
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// time the call
+	startTime := time.Now()
+
+	log.Printf("[Client]: Request #%d sent.", id)
+
+	// contact the server
+	r, err := c.MaxPool(ctx, &pb.MaxPoolFrontRequest{
+		Target: targetProto,
+		Size:   int32(maxPoolSize)})
+
+	if err != nil {
+		if s, ok := status.FromError(err); ok {
+			log.Printf("[Client]: Request #%d -> Unsuccessful! %s: %v", id, s.Message(), s.Details())
+			wg.Done()
+			return
+		}
+	}
+
+	// print the result
+	result := utils.ProtoToMatrix(r.GetResult())
+	log.Printf("[Client]: Request #%d -> Response: (#%d, powFactor: %d, size: %dx%d) in %d ms",
+		id,
+		r.GetID(),
+		powerFactor,
+		len(result), len(result[0]),
+		time.Since(startTime).Milliseconds())
+
+	utils.PrettyPrint("Target Matrix", target)
+	utils.PrettyPrint("Result Matrix", result)
+
+	wg.Done()
+}
+
 func main() {
 	log.SetOutput(os.Stdout)
 
@@ -181,7 +220,8 @@ func main() {
 	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
 		// go choice()
-		go run(i)
+		// go convolutionRun(i)
+		go maxPoolRun(2)
 	}
 
 	// wait

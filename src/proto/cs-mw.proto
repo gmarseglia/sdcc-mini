@@ -33,6 +33,16 @@ message ConvolutionFrontReply {
     int32 ID = 2;
 }
 
+message MaxPoolFrontRequest {
+    Matrix Target = 1;
+    int32 Size = 2;
+}
+
+message MaxPoolFrontReply {
+    Matrix Result = 1;
+    int32 ID = 2;
+}
+
 message ConvolutionBackRequest {
     Matrix Target = 1;
     Matrix Kernel = 2;
@@ -40,6 +50,17 @@ message ConvolutionBackRequest {
 }
 
 message ConvolutionBackReply {
+    Matrix Result = 1;
+    int32 ID = 2;
+}
+
+message MaxPoolBackRequest {
+    Matrix Target = 1;
+    int32 Size = 2;
+    int32 ID = 3;
+}
+
+message MaxPoolBackReply {
     Matrix Result = 1;
     int32 ID = 2;
 }
@@ -56,12 +77,14 @@ service Front {
     // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
     rpc Convulution(ConvolutionFrontRequest) returns (ConvolutionFrontReply) {}
+    rpc MaxPool(MaxPoolFrontRequest) returns (MaxPoolFrontReply) {}
 }
 
 service Back {
     // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
     rpc Convulution(ConvolutionBackRequest) returns (ConvolutionBackReply) {}
+    rpc MaxPool(MaxPoolBackRequest) returns (MaxPoolBackReply) {}
 }
 
 service Master {

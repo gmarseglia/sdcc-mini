@@ -125,6 +125,59 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequ
 	return &pb.ConvolutionBackReply{Result: utils.MatrixToProto(target), ID: requestID}, nil
 }
 
+func (s *backServer) MaxPool(ctx context.Context, in *pb.MaxPoolBackRequest) (*pb.MaxPoolBackReply, error) {
+	// signal as activated
+	active += 1
+	activeChannel <- active
+
+	// log response
+	requestID := in.GetID()
+	log.Printf("[Back server]: Received request #%d, Type: MaxPool", requestID)
+
+	target := utils.ProtoToMatrix(in.GetTarget())
+	targetHeight := len(target)
+	targetWidth := len(target[0])
+
+	// Max pool
+	poolSize := int(in.GetSize())
+	// pooledHeight := int(math.Ceil(float64(len(target)) / float64(poolSize)))
+	pooledHeight := targetHeight / poolSize
+	if targetHeight%poolSize != 0 {
+		pooledHeight += 1
+	}
+	pooledWidth := targetWidth / poolSize
+	if targetWidth%poolSize != 0 {
+		pooledWidth += 1
+	}
+
+	result := utils.GenerateEmptyMatrix(pooledHeight, pooledWidth)
+
+	for pi := 0; pi < pooledHeight; pi++ {
+		for pj := 0; pj < pooledWidth; pj++ {
+			var max int32 = 0
+			for i := 0; i < poolSize; i++ {
+				for j := 0; j < poolSize; j++ {
+					ti := pi*poolSize + i
+					tj := pj*poolSize + j
+					if ti < targetHeight && tj < targetWidth && target[ti][tj] > max {
+						max = target[ti][tj]
+					}
+				}
+			}
+			result[pi][pj] = max
+		}
+	}
+
+	utils.PrettyPrint("result", result)
+
+	// signal as deactivated
+	active -= 1
+	activeChannel <- active
+
+	// send response
+	return &pb.MaxPoolBackReply{Result: utils.MatrixToProto(result), ID: requestID}, nil
+}
+
 func debugActive() {
 	for active := range activeChannel {
 		log.Printf("[Back server]: Active rpc: %d", active)

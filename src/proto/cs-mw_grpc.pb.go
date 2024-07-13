@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	Front_Choice_FullMethodName      = "/mini.Front/Choice"
 	Front_Convulution_FullMethodName = "/mini.Front/Convulution"
+	Front_MaxPool_FullMethodName     = "/mini.Front/MaxPool"
 )
 
 // FrontClient is the client API for Front service.
@@ -30,6 +31,7 @@ type FrontClient interface {
 	// #TODO: remove if working
 	Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error)
 	Convulution(ctx context.Context, in *ConvolutionFrontRequest, opts ...grpc.CallOption) (*ConvolutionFrontReply, error)
+	MaxPool(ctx context.Context, in *MaxPoolFrontRequest, opts ...grpc.CallOption) (*MaxPoolFrontReply, error)
 }
 
 type frontClient struct {
@@ -58,6 +60,15 @@ func (c *frontClient) Convulution(ctx context.Context, in *ConvolutionFrontReque
 	return out, nil
 }
 
+func (c *frontClient) MaxPool(ctx context.Context, in *MaxPoolFrontRequest, opts ...grpc.CallOption) (*MaxPoolFrontReply, error) {
+	out := new(MaxPoolFrontReply)
+	err := c.cc.Invoke(ctx, Front_MaxPool_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FrontServer is the server API for Front service.
 // All implementations must embed UnimplementedFrontServer
 // for forward compatibility
@@ -65,6 +76,7 @@ type FrontServer interface {
 	// #TODO: remove if working
 	Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error)
 	Convulution(context.Context, *ConvolutionFrontRequest) (*ConvolutionFrontReply, error)
+	MaxPool(context.Context, *MaxPoolFrontRequest) (*MaxPoolFrontReply, error)
 	mustEmbedUnimplementedFrontServer()
 }
 
@@ -77,6 +89,9 @@ func (UnimplementedFrontServer) Choice(context.Context, *ChoiceBiRequest) (*Choi
 }
 func (UnimplementedFrontServer) Convulution(context.Context, *ConvolutionFrontRequest) (*ConvolutionFrontReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Convulution not implemented")
+}
+func (UnimplementedFrontServer) MaxPool(context.Context, *MaxPoolFrontRequest) (*MaxPoolFrontReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MaxPool not implemented")
 }
 func (UnimplementedFrontServer) mustEmbedUnimplementedFrontServer() {}
 
@@ -127,6 +142,24 @@ func _Front_Convulution_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Front_MaxPool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MaxPoolFrontRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FrontServer).MaxPool(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Front_MaxPool_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FrontServer).MaxPool(ctx, req.(*MaxPoolFrontRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Front_ServiceDesc is the grpc.ServiceDesc for Front service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -142,6 +175,10 @@ var Front_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Convulution",
 			Handler:    _Front_Convulution_Handler,
 		},
+		{
+			MethodName: "MaxPool",
+			Handler:    _Front_MaxPool_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "cs-mw.proto",
@@ -150,6 +187,7 @@ var Front_ServiceDesc = grpc.ServiceDesc{
 const (
 	Back_Choice_FullMethodName      = "/mini.Back/Choice"
 	Back_Convulution_FullMethodName = "/mini.Back/Convulution"
+	Back_MaxPool_FullMethodName     = "/mini.Back/MaxPool"
 )
 
 // BackClient is the client API for Back service.
@@ -159,6 +197,7 @@ type BackClient interface {
 	// #TODO: remove if working
 	Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error)
 	Convulution(ctx context.Context, in *ConvolutionBackRequest, opts ...grpc.CallOption) (*ConvolutionBackReply, error)
+	MaxPool(ctx context.Context, in *MaxPoolBackRequest, opts ...grpc.CallOption) (*MaxPoolBackReply, error)
 }
 
 type backClient struct {
@@ -187,6 +226,15 @@ func (c *backClient) Convulution(ctx context.Context, in *ConvolutionBackRequest
 	return out, nil
 }
 
+func (c *backClient) MaxPool(ctx context.Context, in *MaxPoolBackRequest, opts ...grpc.CallOption) (*MaxPoolBackReply, error) {
+	out := new(MaxPoolBackReply)
+	err := c.cc.Invoke(ctx, Back_MaxPool_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BackServer is the server API for Back service.
 // All implementations must embed UnimplementedBackServer
 // for forward compatibility
@@ -194,6 +242,7 @@ type BackServer interface {
 	// #TODO: remove if working
 	Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error)
 	Convulution(context.Context, *ConvolutionBackRequest) (*ConvolutionBackReply, error)
+	MaxPool(context.Context, *MaxPoolBackRequest) (*MaxPoolBackReply, error)
 	mustEmbedUnimplementedBackServer()
 }
 
@@ -206,6 +255,9 @@ func (UnimplementedBackServer) Choice(context.Context, *ChoiceBiRequest) (*Choic
 }
 func (UnimplementedBackServer) Convulution(context.Context, *ConvolutionBackRequest) (*ConvolutionBackReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Convulution not implemented")
+}
+func (UnimplementedBackServer) MaxPool(context.Context, *MaxPoolBackRequest) (*MaxPoolBackReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MaxPool not implemented")
 }
 func (UnimplementedBackServer) mustEmbedUnimplementedBackServer() {}
 
@@ -256,6 +308,24 @@ func _Back_Convulution_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Back_MaxPool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MaxPoolBackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackServer).MaxPool(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Back_MaxPool_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackServer).MaxPool(ctx, req.(*MaxPoolBackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Back_ServiceDesc is the grpc.ServiceDesc for Back service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -270,6 +340,10 @@ var Back_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Convulution",
 			Handler:    _Back_Convulution_Handler,
+		},
+		{
+			MethodName: "MaxPool",
+			Handler:    _Back_MaxPool_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
