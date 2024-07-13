@@ -1,11 +1,14 @@
 package utils
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"net"
 	"os"
 	"time"
+
+	pb "mini/proto"
 )
 
 const Step = 25
@@ -66,4 +69,49 @@ func setupField(mandatory bool, field *string, envName string, defaultValue stri
 			}
 		}
 	}
+}
+
+func PrettyPrint(title string, matrix [][]int32) {
+	maxWidth := 0
+	for _, row := range matrix {
+		for _, value := range row {
+			width := len(fmt.Sprintf("%d", value))
+			if width > maxWidth {
+				maxWidth = width
+			}
+		}
+	}
+
+	// Print the matrix with pretty formatting
+	fmt.Println(title)
+	for _, row := range matrix {
+		for _, value := range row {
+			fmt.Printf("%*d ", maxWidth, value)
+		}
+		fmt.Println()
+	}
+}
+
+func MatrixToProto(matrix [][]int32) *pb.Matrix {
+	protoMatrix := &pb.Matrix{}
+	for _, row := range matrix {
+		protoRow := &pb.Row{}
+		for _, value := range row {
+			protoRow.Values = append(protoRow.Values, value)
+		}
+		protoMatrix.Rows = append(protoMatrix.Rows, protoRow)
+	}
+	return protoMatrix
+}
+
+func ProtoToMatrix(protoMatrix *pb.Matrix) [][]int32 {
+	matrix := [][]int32{}
+	for _, protoRow := range protoMatrix.Rows {
+		row := []int32{}
+		for _, value := range protoRow.Values {
+			row = append(row, value)
+		}
+		matrix = append(matrix, row)
+	}
+	return matrix
 }

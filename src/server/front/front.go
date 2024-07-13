@@ -7,6 +7,7 @@ import (
 	"log"
 	pb "mini/proto"
 	"mini/server/master"
+	"mini/utils"
 	"net"
 	"sync"
 	"time"
@@ -73,6 +74,62 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 		// send response
 		return &pb.ChoiceReply{Option: WorkerResponse.GetOption(), ReplyID: int32(id)}, nil
 	}
+}
+
+func (s *FrontServer) Convulution(ctx context.Context, in *pb.ConvoluteFrontRequest) (*pb.ConvoluteFrontReply, error) {
+	// generate ID
+	counterLock.Lock()
+	counter += 1
+	var id = counter
+	counterLock.Unlock()
+
+	log.Printf("[Front]: Request #%d started.", id)
+
+	// Deserialize
+	target := utils.ProtoToMatrix(in.Target)
+	kernel := utils.ProtoToMatrix(in.Kernel)
+
+	// #TODO: remove if working
+	utils.PrettyPrint("Target Matrix", target)
+	utils.PrettyPrint("Kernel Matrix", kernel)
+
+	// for {
+	// 	// get worker
+	// 	addr := master.GetWorker()
+
+	// 	// Set up a connection to the gRPC server
+	// 	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// 	if err != nil {
+	// 		log.Fatalf("[Front]: Did not connect: %v", err)
+	// 	}
+	// 	defer conn.Close()
+
+	// 	// create the client object
+	// 	c := pb.NewBackClient(conn)
+
+	// 	// create the context
+	// 	ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+	// 	defer cancel()
+
+	// 	// time the call
+	// 	startTime := time.Now()
+
+	// 	// contact the server
+	// 	WorkerResponse, err := c.Choice(ctxInternal, in)
+	// 	if err != nil {
+	// 		// log.Printf("could not greet: %v", err)
+	// 		log.Printf("[Front]: %s is unreachable.", addr)
+	// 		master.RemoveWorker(addr)
+	// 		continue
+	// 	}
+
+	// 	log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms", id, WorkerResponse.GetReplyID(), time.Since(startTime).Milliseconds())
+
+	// 	// send response
+	// 	return &pb.ChoiceReply{Option: WorkerResponse.GetOption(), ReplyID: int32(id)}, nil
+	// }
+
+	return &pb.ConvoluteFrontReply{Result: in.Target, ID: int32(id)}, nil
 }
 
 func StartFrontServer() {

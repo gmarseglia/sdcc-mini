@@ -73,6 +73,48 @@ func choice() {
 	wg.Done()
 }
 
+func run() {
+	// Initialize the matrixes
+	target := [][]int32{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}
+	kernel := [][]int32{{-1, 0}, {1, 0}}
+
+	utils.PrettyPrint("Target Matrix", target)
+	utils.PrettyPrint("Kernel Matrix", kernel)
+
+	// Serialie the matrices
+	targetProto := utils.MatrixToProto(target)
+	kernelProto := utils.MatrixToProto(kernel)
+
+	// Internal ID
+	counterLock.Lock()
+	counter++
+	id := counter
+	counterLock.Unlock()
+
+	// create the context
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// time the call
+	startTime := time.Now()
+
+	log.Printf("[Client]: Request #%d sent.", id)
+
+	// contact the server
+	r, err := c.Convulution(ctx, &pb.ConvoluteFrontRequest{
+		Target: targetProto,
+		Kernel: kernelProto})
+
+	if err != nil {
+		log.Fatalf("could not greet: %v", err)
+	}
+
+	// print the result
+	log.Printf("[Client]: Request #%d -> Response: (#%d , %s) in %d ms", id, r.GetID(), r.GetResult(), time.Since(startTime).Milliseconds())
+
+	wg.Done()
+}
+
 func main() {
 	log.SetOutput(os.Stdout)
 
@@ -101,7 +143,8 @@ func main() {
 
 	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
-		go choice()
+		// go choice()
+		go run()
 	}
 
 	// wait

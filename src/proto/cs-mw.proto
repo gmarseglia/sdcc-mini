@@ -4,14 +4,44 @@ option go_package = "mini/proto";
 
 package mini;
 
+// #TODO: remove if working
 message ChoiceBiRequest {
         string Option1 = 1;
         string Option2 = 2;
-    }
+}
 
 message ChoiceReply {
     string Option = 1;
     int32 ReplyID = 2;
+}
+
+message Matrix {
+    repeated Row Rows = 1;
+}
+
+message Row {
+    repeated int32 Values = 1;
+}
+
+message ConvoluteFrontRequest {
+    Matrix Target = 1;
+    Matrix Kernel = 2;
+}
+
+message ConvoluteFrontReply {
+    Matrix Result = 1;
+    int32 ID = 2;
+}
+
+message ConvoluteBackRequest {
+    Matrix Target = 1;
+    Matrix Kernel = 2;
+    int32 ID = 3;
+}
+
+message ConvoluteBackReply {
+    Matrix Result = 1;
+    int32 ID = 2;
 }
 
 message NotifyRequest {
@@ -23,11 +53,15 @@ message NotifyReply {
 }
 
 service Front {
+    // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
+    rpc Convulution(ConvoluteFrontRequest) returns (ConvoluteFrontReply) {}
 }
 
 service Back {
+    // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
+    rpc Convulution(ConvoluteBackRequest) returns (ConvoluteBackReply) {}
 }
 
 service Master {
