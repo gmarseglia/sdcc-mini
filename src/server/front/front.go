@@ -112,6 +112,8 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 			Target:      in.GetTarget(),
 			Kernel:      in.GetKernel(),
 			AvgPoolSize: in.GetAvgPoolSize(),
+			UseKernels:  in.GetUseKernels(),
+			UseSigmoid:  in.GetUseSigmoid(),
 			ID:          int32(id)}
 
 		// contact the server

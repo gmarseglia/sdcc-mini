@@ -84,11 +84,11 @@ func convolutionalRun() {
 	counterLock.Unlock()
 
 	// Settings
-	targetSize := 4
-	kernelNum := 0
-	kernelSize := 3
-	avgPoolSize := 2
-	useKernels := false
+	targetSize := 1000
+	kernelNum := 100
+	kernelSize := 0
+	avgPoolSize := 1000
+	useKernels := kernelSize > 0
 	useSigmoid := true
 
 	exptecedSize := max(
