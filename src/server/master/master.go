@@ -16,10 +16,8 @@ import (
 
 var (
 	MasterPort        = flag.String("MasterPort", "", "The port for master service.")
-	WorkerList        []string
-	WorkerListLock    sync.RWMutex
-	WorkerCostMap     = make(map[string]float32)
-	WorkerCostMapLock sync.RWMutex
+	WorkerInfoMap     = make(map[string]WorkerInfo)
+	WorkerInfoMapLock sync.RWMutex
 	workerChannel     = make(chan int, 1000)
 	s                 *grpc.Server
 )
@@ -28,93 +26,115 @@ type MasterServer struct {
 	pb.UnimplementedMasterServer
 }
 
+type WorkerInfo struct {
+	QueueSize int32
+	UsageCPU  float32
+	Cost      float32
+	LastPing  time.Time
+}
+
 // SayHello implementation
 func (s *MasterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequest) (*pb.NotifyReply, error) {
 	log.Printf("[Master]: Notification from %s", in.GetWorkerAddress())
 
 	// Add worker
-	resultMessage := AddWorker(in.GetWorkerAddress())
-
-	// send response
-	return &pb.NotifyReply{Result: resultMessage}, nil
+	_, exists := WorkerInfoMap[in.GetWorkerAddress()]
+	if exists {
+		return &pb.NotifyReply{Result: "ALREADY ADDED"}, nil
+	} else {
+		WorkerInfoMapLock.Lock()
+		WorkerInfoMap[in.GetWorkerAddress()] = WorkerInfo{
+			Cost:     float32(math.Inf(1)),
+			LastPing: time.Now(),
+		}
+		workerChannel <- len(WorkerInfoMap)
+		WorkerInfoMapLock.Unlock()
+		log.Printf("[Master]: Added worker %s", in.GetWorkerAddress())
+		return &pb.NotifyReply{Result: "NOTIFICATION OK"}, nil
+	}
 }
 
 // NotifyPing implementation
 func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
-	// log.Printf("[Master]: ping from %s: (QueueSize: %d, UsageCPU: %.2f).", in.GetWorkerAddress(), in.GetQueueSize(), in.GetUsageCPU())
+	// Update worker info
+	cost := in.GetUsageCPU() * (float32(in.QueueSize) + 1)
+	WorkerInfoMapLock.Lock()
+	WorkerInfoMap[in.GetWorkerAddress()] = WorkerInfo{
+		QueueSize: in.GetQueueSize(),
+		UsageCPU:  in.GetUsageCPU(),
+		Cost:      cost,
+		LastPing:  time.Now(),
+	}
+	WorkerInfoMapLock.Unlock()
 
-	// Compute cost of the worker
-	var cost float32 = in.GetUsageCPU() * (float32(in.QueueSize) + 1)
-	WorkerCostMapLock.Lock()
-	WorkerCostMap[in.GetWorkerAddress()] = cost
-	WorkerCostMapLock.Unlock()
-	log.Printf("[Master]: Cost of worker %s: %.2f", in.GetWorkerAddress(), cost)
+	// log.Printf("[Master]: Cost of worker %s: %.2f", in.GetWorkerAddress(), cost)
 
 	// send response
 	return &pb.PingReply{Result: "PING OK"}, nil
 }
 
-func AddWorker(targetWorkerAddr string) string {
-	// check if worker already active
-	WorkerListLock.RLock()
-	for _, v := range WorkerList {
-		if v == targetWorkerAddr {
-			return "ALREADY ADDED"
-		}
-	}
-	WorkerListLock.RUnlock()
-
-	// append worker to active list
-	WorkerListLock.Lock()
-	WorkerList = append(WorkerList, targetWorkerAddr)
-	workerChannel <- len(WorkerList)
-	WorkerListLock.Unlock()
-
-	return "OK"
-}
-
-func RemoveWorker(targetWorkerAddr string) {
+func RemoveWorker(targetWorkerAddr string, cause string) {
 	// delete worker address
-	WorkerListLock.Lock()
-	for i, v := range WorkerList {
-		if v == targetWorkerAddr {
-			WorkerList = append(WorkerList[:i], WorkerList[i+1:]...)
-			workerChannel <- len(WorkerList)
-		}
+	WorkerInfoMapLock.Lock()
+	_, exists := WorkerInfoMap[targetWorkerAddr]
+	if exists {
+		delete(WorkerInfoMap, targetWorkerAddr)
+		log.Printf("[Master]: Deleted worker %s due to %s", targetWorkerAddr, cause)
 	}
-	WorkerListLock.Unlock()
+	WorkerInfoMapLock.Unlock()
 }
 
 func GetWorker() string {
 	// Wait for workers to be added
-	for len(WorkerCostMap) == 0 {
+	for len(WorkerInfoMap) == 0 {
 		time.Sleep(time.Second * 1)
 	}
 
-	WorkerCostMapLock.Lock()
+	WorkerInfoMapLock.Lock()
 
 	// Find the cheapest worker
 	var cheapestWorker string
+	var cheapestWorkerInfo WorkerInfo
 	var lowestCost float32 = float32(math.Inf(1))
-	for workerAddr, cost := range WorkerCostMap {
-		log.Printf("[Master]: Cost of worker %s: %.2f", workerAddr, cost)
-		if cost < lowestCost {
-			lowestCost = cost
+	for workerAddr, info := range WorkerInfoMap {
+		log.Printf("[Master]: Cost of worker %s: %.2f", workerAddr, info.Cost)
+		if info.Cost < lowestCost {
+			lowestCost = info.Cost
 			cheapestWorker = workerAddr
+			cheapestWorkerInfo = info
 		}
 	}
 	// Increase the cost to avoid overuse on burst traffic
-	WorkerCostMap[cheapestWorker] = lowestCost * 1.5
+	cheapestWorkerInfo.Cost = float32(cheapestWorkerInfo.QueueSize+1) * (cheapestWorkerInfo.UsageCPU * 1.1)
+	WorkerInfoMap[cheapestWorker] = cheapestWorkerInfo
 
-	WorkerCostMapLock.Unlock()
+	WorkerInfoMapLock.Unlock()
 
 	return cheapestWorker
 }
 
 func monitorWorker() {
-	for workers := range workerChannel {
-		log.Printf("[Master]: Active workers: %d", workers)
-	}
+	go func() {
+		for workers := range workerChannel {
+			log.Printf("[Master]: Active workers: %d", workers)
+		}
+	}()
+
+	go func() {
+		for {
+			// #TODO: set these as env variables
+			time.Sleep(time.Second * 3)
+			WorkerInfoMapLock.RLock()
+			for workerAddr, info := range WorkerInfoMap {
+				if time.Since(info.LastPing) > time.Second*3 {
+					WorkerInfoMapLock.RUnlock()
+					RemoveWorker(workerAddr, "ping timeout")
+					WorkerInfoMapLock.RLock()
+				}
+			}
+			WorkerInfoMapLock.RUnlock()
+		}
+	}()
 }
 
 func StartServer() {

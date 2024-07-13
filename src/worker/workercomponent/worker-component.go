@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"log"
 	pb "mini/proto"
@@ -67,11 +68,19 @@ func NotifyWorkerActive() error {
 	// Print server response
 	log.Printf("[Worker]: Server reply: %s", r.GetResult())
 
+	if r.GetResult() == "ALREADY ADDED" {
+		return errors.New("worker with same full address already added")
+	}
+
 	return nil
 }
 
 func PingServer(timeout int, usageCPU float32) error {
-	dialServerAndSetClient()
+	// Dial master
+	err := dialServerAndSetClient()
+	if err != nil {
+		return err
+	}
 
 	// create the context
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeout)*4)
@@ -84,10 +93,14 @@ func PingServer(timeout int, usageCPU float32) error {
 	}
 
 	// contact the server
-	_, err := c.NotifyPing(ctx, pingRequest)
+	reply, err := c.NotifyPing(ctx, pingRequest)
 
 	if err != nil {
 		log.Printf("[Worker]: Could not ping Master. More:\n%v", err)
+	}
+
+	if reply.GetResult() != "PING OK" {
+		log.Printf("[Worker]: Server reply: %s", reply.GetResult())
 	}
 
 	return err

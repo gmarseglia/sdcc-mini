@@ -86,11 +86,11 @@ func main() {
 	for {
 		// Prepare the request
 		percentages, _ := cpu.Percent(time.Second, false)
-		time.Sleep(time.Second * time.Duration(*PingTimeout-1))
-		err := worker.PingServer(*PingTimeout, float32(percentages[0]*(*FakeCPUScale)))
+		err := worker.PingServer(*PingTimeout*10, float32(percentages[0]*(*FakeCPUScale)))
 		if err != nil {
 			stopComponentsAndExit("Ping failed")
 		}
+		time.Sleep(time.Second * time.Duration(*PingTimeout-1))
 	}
 
 }

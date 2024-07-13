@@ -66,7 +66,7 @@ func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.C
 		if err != nil {
 			// log.Printf("could not greet: %v", err)
 			log.Printf("[Front]: %s is unreachable.", addr)
-			master.RemoveWorker(addr)
+			master.RemoveWorker(addr, "unreachable")
 			continue
 		}
 
@@ -128,7 +128,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 				return nil, err
 			} else {
 				log.Printf("[Front]: %s is unreachable: %v", addr, err)
-				master.RemoveWorker(addr)
+				master.RemoveWorker(addr, "unreachable")
 				continue
 			}
 		}
