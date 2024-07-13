@@ -111,8 +111,7 @@ func (s *FrontServer) Convulution(ctx context.Context, in *pb.ConvolutionFrontRe
 		// contact the server
 		WorkerResponse, err := c.Convulution(ctxInternal, &backRequest)
 		if err != nil {
-			// log.Printf("could not greet: %v", err)
-			log.Printf("[Front]: %s is unreachable.", addr)
+			log.Printf("[Front]: %s is unreachable: %v", addr, err)
 			master.RemoveWorker(addr)
 			continue
 		}

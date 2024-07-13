@@ -120,7 +120,7 @@ func GenerateRandomMatrix(height int, width int) [][]float32 {
 	for i := 0; i < height; i++ {
 		result[i] = make([]float32, width)
 		for j := 0; j < width; j++ {
-			result[i][j] = float32(rand.Float32())
+			result[i][j] = float32(rand.Float32()*2 - 1)
 		}
 	}
 	return result

@@ -25,11 +25,13 @@ message Row {
 
 message ConvolutionFrontRequest {
     Matrix Target = 1;
-    Matrix Kernel = 2;
+    repeated Matrix Kernel = 2;
+    int32 StrideHorizontal = 3;
+    int32 StrideVertical = 4;
 }
 
 message ConvolutionFrontReply {
-    Matrix Result = 1;
+    repeated Matrix Result = 1;
     int32 ID = 2;
 }
 
@@ -45,12 +47,14 @@ message MaxPoolFrontReply {
 
 message ConvolutionBackRequest {
     Matrix Target = 1;
-    Matrix Kernel = 2;
-    int32 ID = 3;
+    repeated Matrix Kernel = 2;
+    int32 StrideHorizontal = 3;
+    int32 StrideVertical = 4;
+    int32 ID = 5;
 }
 
 message ConvolutionBackReply {
-    Matrix Result = 1;
+    repeated Matrix Result = 1;
     int32 ID = 2;
 }
 
