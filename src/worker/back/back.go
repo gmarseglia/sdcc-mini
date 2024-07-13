@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	pb "mini/proto"
 	"mini/utils"
@@ -70,14 +71,58 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequ
 	log.Printf("[Back server]: Received request #%d", requestID)
 
 	// #TODO: implement convolution
-	result := in.GetTarget()
+	target := utils.ProtoToMatrix(in.GetTarget())
+	kernel := utils.ProtoToMatrix(in.GetKernel())
+
+	// Padding
+	// resultWidth := len(result[0])
+	// resultHeight := len(result)
+	kernelWidth := len(kernel[0])
+	kernelHeight := len(kernel)
+
+	padTop := int(math.Floor((float64(kernelHeight) - 1.0) / 2.0))
+	padBottom := int(math.Ceil((float64(kernelHeight) - 1.0) / 2.0))
+	padLeft := int(math.Floor((float64(kernelWidth) - 1.0) / 2.0))
+	padRight := int(math.Ceil((float64(kernelWidth) - 1.0) / 2.0))
+
+	// Deep copy + padding
+	paddedHeight := padTop + len(target) + padBottom
+	paddedWidth := padLeft + len(target[0]) + padRight
+	input := make([][]int32, paddedHeight)
+	for i := 0; i < paddedHeight; i++ {
+		input[i] = make([]int32, paddedWidth)
+		for j := 0; j < paddedWidth; j++ {
+			if (i < padTop) || (i >= padTop+len(target)) || (j < padLeft) || (j >= padLeft+len(target[0])) {
+				input[i][j] = 0
+			} else {
+				input[i][j] = target[i-padTop][j-padLeft]
+			}
+		}
+	}
+
+	// Apply convolution
+	for i := 0; i < len(target); i++ {
+		for j := 0; j < len(target[0]); j++ {
+			var newTarget int32 = 0
+			for kw := 0; kw < kernelHeight; kw++ {
+				for kh := 0; kh < kernelWidth; kh++ {
+					newTarget += input[i+kh][j+kw] * kernel[kh][kw]
+				}
+			}
+			target[i][j] = newTarget
+		}
+	}
+
+	// #TODO: remove if working
+	// utils.PrettyPrint("input", input)
+	// utils.PrettyPrint("target", target)
 
 	// signal as deactivated
 	active -= 1
 	activeChannel <- active
 
 	// send response
-	return &pb.ConvolutionBackReply{Result: result, ID: requestID}, nil
+	return &pb.ConvolutionBackReply{Result: utils.MatrixToProto(target), ID: requestID}, nil
 }
 
 func debugActive() {

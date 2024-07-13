@@ -1,6 +1,9 @@
 src/client/runParallelClients.sh
+src/client/client
 src/server/runServer.sh
+src/server/server
 src/proto/recompile.sh
 src/worker/runMultipleWorker.sh
+src/worker/worker
 src/worker/output
 src/go.work.sum

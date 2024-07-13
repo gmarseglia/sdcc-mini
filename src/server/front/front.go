@@ -7,7 +7,6 @@ import (
 	"log"
 	pb "mini/proto"
 	"mini/server/master"
-	"mini/utils"
 	"net"
 	"sync"
 	"time"
@@ -85,13 +84,11 @@ func (s *FrontServer) Convulution(ctx context.Context, in *pb.ConvolutionFrontRe
 
 	log.Printf("[Front]: Request #%d started.", id)
 
-	// Deserialize
-	target := utils.ProtoToMatrix(in.Target)
-	kernel := utils.ProtoToMatrix(in.Kernel)
-
 	// #TODO: remove if working
-	utils.PrettyPrint("Target Matrix", target)
-	utils.PrettyPrint("Kernel Matrix", kernel)
+	// target := utils.ProtoToMatrix(in.Target)
+	// kernel := utils.ProtoToMatrix(in.Kernel)
+	// utils.PrettyPrint("Target Matrix", target)
+	// utils.PrettyPrint("Kernel Matrix", kernel)
 
 	for {
 		// get worker
@@ -129,8 +126,8 @@ func (s *FrontServer) Convulution(ctx context.Context, in *pb.ConvolutionFrontRe
 		log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms", id, WorkerResponse.GetID(), time.Since(startTime).Milliseconds())
 
 		// #TODO: remove if working
-		result := utils.ProtoToMatrix(WorkerResponse.GetResult())
-		utils.PrettyPrint("Result Matrix", result)
+		// result := utils.ProtoToMatrix(WorkerResponse.GetResult())
+		// utils.PrettyPrint("Result Matrix", result)
 
 		// send response
 		return &pb.ConvolutionFrontReply{Result: WorkerResponse.GetResult(), ID: int32(id)}, nil

@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"os"
 	"strconv"
 	"sync"
@@ -12,6 +14,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	pb "mini/proto"
 	"mini/utils"
@@ -73,13 +76,37 @@ func choice() {
 	wg.Done()
 }
 
-func run() {
+func run(powerFactor int) {
 	// Initialize the matrixes
-	target := [][]int32{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}
-	kernel := [][]int32{{-1, 0}, {1, 0}}
+	// target := [][]int32{
+	// 	{1, 2, 3},
+	// 	{4, 5, 6},
+	// 	{7, 8, 9}}
+	// kernel := [][]int32{
+	// 	{1, 2, 3},
+	// 	{4, 5, 6},
+	// 	{7, 8, 9}}
 
-	utils.PrettyPrint("Target Matrix", target)
-	utils.PrettyPrint("Kernel Matrix", kernel)
+	targetSize := int(math.Pow(2, float64(powerFactor)))
+	kernelSize := 7
+
+	target := make([][]int32, targetSize)
+	for i := 0; i < targetSize; i++ {
+		target[i] = make([]int32, targetSize)
+		for j := 0; j < targetSize; j++ {
+			target[i][j] = int32(rand.Intn(256))
+		}
+	}
+
+	kernel := make([][]int32, kernelSize)
+	for i := 0; i < kernelSize; i++ {
+		kernel[i] = make([]int32, kernelSize)
+		for j := 0; j < kernelSize; j++ {
+			kernel[i][j] = int32(rand.Intn(256))
+		}
+	}
+	// utils.PrettyPrint("Target Matrix", target)
+	// utils.PrettyPrint("Kernel Matrix", kernel)
 
 	// Serialie the matrices
 	targetProto := utils.MatrixToProto(target)
@@ -106,11 +133,21 @@ func run() {
 		Kernel: kernelProto})
 
 	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+		if s, ok := status.FromError(err); ok {
+			log.Printf("[Client]: Request #%d -> Unsuccessful! %s: %v", id, s.Message(), s.Details())
+			wg.Done()
+			return
+		}
 	}
 
 	// print the result
-	log.Printf("[Client]: Request #%d -> Response: (#%d , %s) in %d ms", id, r.GetID(), r.GetResult(), time.Since(startTime).Milliseconds())
+	result := utils.ProtoToMatrix(r.GetResult())
+	log.Printf("[Client]: Request #%d -> Response: (#%d, powFactor: %d, size: %dx%d) in %d ms",
+		id,
+		r.GetID(),
+		powerFactor,
+		len(result), len(result[0]),
+		time.Since(startTime).Milliseconds())
 
 	wg.Done()
 }
@@ -144,7 +181,7 @@ func main() {
 	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
 		// go choice()
-		go run()
+		go run(i)
 	}
 
 	// wait
