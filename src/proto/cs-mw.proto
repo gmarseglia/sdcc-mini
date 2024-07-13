@@ -23,49 +23,26 @@ message Row {
     repeated float Values = 1;
 }
 
-message ConvolutionFrontRequest {
+message ConvolutionalLayerFrontRequest {
     Matrix Target = 1;
     repeated Matrix Kernel = 2;
-    int32 StrideHorizontal = 3;
-    int32 StrideVertical = 4;
+    int32 AvgPoolStride = 3;
 }
 
-message ConvolutionFrontReply {
+message ConvolutionalLayerFrontReply {
     repeated Matrix Result = 1;
     int32 ID = 2;
 }
 
-message MaxPoolFrontRequest {
-    Matrix Target = 1;
-    int32 Size = 2;
-}
-
-message MaxPoolFrontReply {
-    Matrix Result = 1;
-    int32 ID = 2;
-}
-
-message ConvolutionBackRequest {
+message ConvolutionalLayerBackRequest {
     Matrix Target = 1;
     repeated Matrix Kernel = 2;
-    int32 StrideHorizontal = 3;
-    int32 StrideVertical = 4;
-    int32 ID = 5;
-}
-
-message ConvolutionBackReply {
-    repeated Matrix Result = 1;
-    int32 ID = 2;
-}
-
-message MaxPoolBackRequest {
-    Matrix Target = 1;
-    int32 Size = 2;
+    int32 AvgPoolStride = 4;
     int32 ID = 3;
 }
 
-message MaxPoolBackReply {
-    Matrix Result = 1;
+message ConvolutionalLayerBackReply {
+    repeated Matrix Result = 1;
     int32 ID = 2;
 }
 
@@ -80,15 +57,13 @@ message NotifyReply {
 service Front {
     // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
-    rpc Convulution(ConvolutionFrontRequest) returns (ConvolutionFrontReply) {}
-    rpc MaxPool(MaxPoolFrontRequest) returns (MaxPoolFrontReply) {}
+    rpc Convulution(ConvolutionalLayerFrontRequest) returns (ConvolutionalLayerFrontReply) {}
 }
 
 service Back {
     // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
-    rpc Convulution(ConvolutionBackRequest) returns (ConvolutionBackReply) {}
-    rpc MaxPool(MaxPoolBackRequest) returns (MaxPoolBackReply) {}
+    rpc Convulution(ConvolutionalLayerBackRequest) returns (ConvolutionalLayerBackReply) {}
 }
 
 service Master {

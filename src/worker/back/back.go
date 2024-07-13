@@ -61,7 +61,7 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
 }
 
-func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequest) (*pb.ConvolutionBackReply, error) {
+func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionalLayerBackRequest) (*pb.ConvolutionalLayerBackReply, error) {
 	// signal as activated
 	active += 1
 	activeChannel <- active
@@ -71,7 +71,7 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequ
 	log.Printf("[Back server]: Received request #%d", requestID)
 
 	// Prepare reply
-	backReply := &pb.ConvolutionBackReply{ID: requestID}
+	backReply := &pb.ConvolutionalLayerBackReply{ID: requestID}
 
 	// Padding
 	kernelWidth := len(utils.ProtoToMatrix(in.Kernel[0]))
@@ -86,14 +86,17 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequ
 		kernel := utils.ProtoToMatrix(kernelProto)
 		target := utils.ProtoToMatrix(in.GetTarget())
 
+		targetHeight := len(target)
+		targetWidth := len(target[0])
+
 		// Deep copy + padding
-		paddedHeight := padTop + len(target) + padBottom
-		paddedWidth := padLeft + len(target[0]) + padRight
+		paddedHeight := padTop + targetHeight + padBottom
+		paddedWidth := padLeft + targetWidth + padRight
 		input := make([][]float32, paddedHeight)
 		for i := 0; i < paddedHeight; i++ {
 			input[i] = make([]float32, paddedWidth)
 			for j := 0; j < paddedWidth; j++ {
-				if (i < padTop) || (i >= padTop+len(target)) || (j < padLeft) || (j >= padLeft+len(target[0])) {
+				if (i < padTop) || (i >= padTop+targetHeight) || (j < padLeft) || (j >= padLeft+targetWidth) {
 					input[i][j] = 0
 				} else {
 					input[i][j] = target[i-padTop][j-padLeft]
@@ -101,22 +104,53 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequ
 			}
 		}
 
-		// Apply convolution
-		result := utils.GenerateEmptyMatrix(len(target), len(target[0]))
-		for i := 0; i < len(target); i++ {
-			for j := 0; j < len(target[0]); j++ {
+		// Apply convolution + sigmoid
+		convoluted := utils.GenerateEmptyMatrix(targetHeight, targetWidth)
+		for i := 0; i < targetHeight; i++ {
+			for j := 0; j < targetWidth; j++ {
 				var newTarget float32 = 0
 				for kw := 0; kw < kernelHeight; kw++ {
 					for kh := 0; kh < kernelWidth; kh++ {
 						newTarget += input[i+kh][j+kw] * kernel[kh][kw]
 					}
 				}
-				result[i][j] = newTarget
+				// Apply sigmoid
+				convoluted[i][j] = float32(1.0 / (1.0 + math.Exp(float64(-newTarget))))
 			}
 		}
 
-		// Append the result
-		backReply.Result = append(backReply.Result, utils.MatrixToProto(result))
+		// Compute size after pooling
+		poolSize := int(in.GetAvgPoolStride())
+		if poolSize > 1 {
+			pooledHeight := int(targetHeight / poolSize)
+			pooledWidth := int(targetWidth / poolSize)
+
+			// Prepare result
+			result := utils.GenerateEmptyMatrix(pooledHeight, pooledWidth)
+
+			// Apply AvgPool
+			for pi := 0; pi < pooledHeight; pi++ {
+				for pj := 0; pj < pooledWidth; pj++ {
+					var avgValue float32 = 0
+					for i := 0; i < poolSize; i++ {
+						for j := 0; j < poolSize; j++ {
+							ti := pi*poolSize + i
+							tj := pj*poolSize + j
+							if ti < targetHeight && tj < targetWidth {
+								avgValue += convoluted[ti][tj] / float32(poolSize*poolSize)
+							}
+						}
+					}
+					result[pi][pj] = avgValue
+				}
+			}
+			// Append the result
+			backReply.Result = append(backReply.Result, utils.MatrixToProto(result))
+		} else {
+			// Append the result
+			backReply.Result = append(backReply.Result, utils.MatrixToProto(convoluted))
+		}
+
 	}
 
 	// signal as deactivated
@@ -125,59 +159,6 @@ func (s *backServer) Convulution(ctx context.Context, in *pb.ConvolutionBackRequ
 
 	// send response
 	return backReply, nil
-}
-
-func (s *backServer) MaxPool(ctx context.Context, in *pb.MaxPoolBackRequest) (*pb.MaxPoolBackReply, error) {
-	// signal as activated
-	active += 1
-	activeChannel <- active
-
-	// log response
-	requestID := in.GetID()
-	log.Printf("[Back server]: Received request #%d, Type: MaxPool", requestID)
-
-	target := utils.ProtoToMatrix(in.GetTarget())
-	targetHeight := len(target)
-	targetWidth := len(target[0])
-
-	// Max pool
-	poolSize := int(in.GetSize())
-	// pooledHeight := int(math.Ceil(float64(len(target)) / float64(poolSize)))
-	pooledHeight := int(targetHeight / poolSize)
-	if targetHeight%poolSize != 0 {
-		pooledHeight += 1
-	}
-	pooledWidth := int(targetWidth / poolSize)
-	if targetWidth%poolSize != 0 {
-		pooledWidth += 1
-	}
-
-	result := utils.GenerateEmptyMatrix(pooledHeight, pooledWidth)
-
-	for pi := 0; pi < pooledHeight; pi++ {
-		for pj := 0; pj < pooledWidth; pj++ {
-			var max float32 = 0
-			for i := 0; i < poolSize; i++ {
-				for j := 0; j < poolSize; j++ {
-					ti := pi*poolSize + i
-					tj := pj*poolSize + j
-					if ti < targetHeight && tj < targetWidth && target[ti][tj] > max {
-						max = target[ti][tj]
-					}
-				}
-			}
-			result[pi][pj] = max
-		}
-	}
-
-	// utils.PrettyPrint("result", result)
-
-	// signal as deactivated
-	active -= 1
-	activeChannel <- active
-
-	// send response
-	return &pb.MaxPoolBackReply{Result: utils.MatrixToProto(result), ID: requestID}, nil
 }
 
 func debugActive() {

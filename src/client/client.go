@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"sync"
@@ -20,7 +19,8 @@ import (
 )
 
 const (
-	timeout = 60 * time.Second
+	timeout    = 60 * time.Second
+	msgMaxSize = 4 * 1024 * 1024
 )
 
 var (
@@ -75,7 +75,7 @@ func choice() {
 	wg.Done()
 }
 
-func convolutionRun() {
+func convolutionalRun() {
 	// Internal ID
 	counterLock.Lock()
 	counter++
@@ -83,18 +83,34 @@ func convolutionRun() {
 	counterLock.Unlock()
 
 	// Settings
-	targetSize := 227
-	kernelNum := 96
-	kernelSize := 11
+	targetSize := 1000
+	kernelNum := 200
+	kernelSize := 3
+	avgPoolStride := 1000
+
+	exptecedSize := max(
+		(targetSize*targetSize*4)+(kernelSize*kernelSize*kernelNum)*4,
+		targetSize*targetSize*kernelNum*4/(avgPoolStride*avgPoolStride))
+
+	log.Printf("[Client]: Request #%d -> Expected size: %d", id, exptecedSize)
+
+	if exptecedSize > msgMaxSize {
+		log.Printf("[Client]: Request #%d NOT SENT -> Size must lower than: %d", id, msgMaxSize)
+		wg.Done()
+		return
+	}
 
 	// Serialie the matrices
-	frontRequest := &pb.ConvolutionFrontRequest{}
-	frontRequest.Target = utils.MatrixToProto(utils.GenerateRandomMatrix(targetSize, targetSize))
+	frontRequest := &pb.ConvolutionalLayerFrontRequest{}
+
+	target := utils.GenerateRandomMatrix(targetSize, targetSize)
+	frontRequest.Target = utils.MatrixToProto(target)
+
 	for i := 0; i < kernelNum; i++ {
 		frontRequest.Kernel = append(frontRequest.Kernel, utils.MatrixToProto(utils.GenerateRandomMatrix(kernelSize, kernelSize)))
 	}
-	frontRequest.StrideHorizontal = 1
-	frontRequest.StrideVertical = 1
+
+	frontRequest.AvgPoolStride = int32(avgPoolStride)
 
 	// create the context
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -121,69 +137,6 @@ func convolutionRun() {
 		id,
 		r.GetID(),
 		time.Since(startTime).Milliseconds())
-
-	// for _, resultProto := range r.GetResult() {
-	// 	result := utils.ProtoToMatrix(resultProto)
-	// 	utils.PrettyPrint("result", result)
-	// }
-
-	wg.Done()
-}
-
-func maxPoolRun(powerFactor int) {
-
-	targetSize := int(math.Pow(2, float64(powerFactor)))
-	var maxPoolSize int
-	if targetSize < 2 {
-		maxPoolSize = 1
-	} else {
-		maxPoolSize = 2
-	}
-
-	target := utils.GenerateRandomMatrix(targetSize, targetSize)
-
-	// Serialie the matrices
-	targetProto := utils.MatrixToProto(target)
-
-	// Internal ID
-	counterLock.Lock()
-	counter++
-	id := counter
-	counterLock.Unlock()
-
-	// create the context
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	// time the call
-	startTime := time.Now()
-
-	log.Printf("[Client]: Request #%d sent.", id)
-
-	// contact the server
-	r, err := c.MaxPool(ctx, &pb.MaxPoolFrontRequest{
-		Target: targetProto,
-		Size:   int32(maxPoolSize)})
-
-	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			log.Printf("[Client]: Request #%d -> Unsuccessful! %s: %v", id, s.Message(), s.Details())
-			wg.Done()
-			return
-		}
-	}
-
-	// print the result
-	result := utils.ProtoToMatrix(r.GetResult())
-	log.Printf("[Client]: Request #%d -> Response: (#%d, powFactor: %d, size: %dx%d) in %d ms",
-		id,
-		r.GetID(),
-		powerFactor,
-		len(result), len(result[0]),
-		time.Since(startTime).Milliseconds())
-
-	utils.PrettyPrint("Target Matrix", target)
-	utils.PrettyPrint("Result Matrix", result)
 
 	wg.Done()
 }
@@ -217,8 +170,7 @@ func main() {
 	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
 		// go choice()
-		go convolutionRun()
-		// go maxPoolRun(2)
+		go convolutionalRun()
 	}
 
 	// wait
