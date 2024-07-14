@@ -123,11 +123,10 @@ func convolutionalRun(param int) {
 	// time the call
 	startTime := time.Now()
 
-	// log.Printf("[Client]: Request #%d sent.", id)
-
 	// contact the server
 	r, err := c.ConvolutionalLayer(ctx, frontRequest)
 
+	// check for errors
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			log.Printf("[Client]: Request #%d -> Unsuccessful! %s: %v", id, s.Message(), s.Details())

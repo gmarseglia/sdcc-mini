@@ -304,7 +304,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 				}
 
 				log.Printf("[Front]: Response: %d complete in %d ms", id, time.Since(startTime).Milliseconds())
-				return &pb.ConvolutionalLayerFrontReply{Result: completedResult}, nil
+				return &pb.ConvolutionalLayerFrontReply{ID: id, Result: completedResult}, nil
 			}
 
 		case replaceIndex := <-replaceChan:
