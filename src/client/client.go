@@ -95,7 +95,7 @@ func convolutionalRun(param int) {
 		(targetSize*targetSize*4)+(kernelSize*kernelSize*kernelNum)*4,
 		targetSize*targetSize*kernelNum*4/(avgPoolSize*avgPoolSize))
 
-	log.Printf("[Client]: Request #%d -> Expected size: %d", id, exptecedSize)
+	log.Printf("[Client]: Request #%d -> Expected size: %d, Expected results: %d", id, exptecedSize, kernelNum)
 
 	if exptecedSize > msgMaxSize {
 		log.Printf("[Client]: Request #%d NOT SENT -> Size must lower than: %d", id, msgMaxSize)
@@ -108,12 +108,10 @@ func convolutionalRun(param int) {
 
 	target := utils.GenerateRandomMatrix(targetSize, targetSize)
 	frontRequest.Target = utils.MatrixToProto(target)
-
 	for i := 0; i < kernelNum; i++ {
 		frontRequest.Kernel = append(frontRequest.Kernel, utils.MatrixToProto(utils.GenerateRandomMatrix(kernelSize, kernelSize)))
 		// utils.PrettyPrint(fmt.Sprintf("Kernel %d", i), utils.ProtoToMatrix(frontRequest.Kernel[i]))
 	}
-
 	frontRequest.AvgPoolSize = int32(avgPoolSize)
 	frontRequest.UseKernels = useKernels
 	frontRequest.UseSigmoid = useSigmoid
@@ -125,7 +123,7 @@ func convolutionalRun(param int) {
 	// time the call
 	startTime := time.Now()
 
-	log.Printf("[Client]: Request #%d sent.", id)
+	// log.Printf("[Client]: Request #%d sent.", id)
 
 	// contact the server
 	r, err := c.ConvolutionalLayer(ctx, frontRequest)
@@ -139,10 +137,11 @@ func convolutionalRun(param int) {
 	}
 
 	// print the result
-	log.Printf("[Client]: Request #%d -> Response: (#%d) in %d ms",
+	log.Printf("[Client]: Request #%d -> Response: (#%d) in %d ms, Results: %d",
 		id,
 		r.GetID(),
-		time.Since(startTime).Milliseconds())
+		time.Since(startTime).Milliseconds(),
+		len(r.GetResult()))
 
 	if *Verbose {
 		utils.PrettyPrint("Target", target)

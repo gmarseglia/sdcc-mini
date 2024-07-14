@@ -72,7 +72,7 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 }
 
 func (s *backServer) Cancel(ctx context.Context, in *pb.CancelRequest) (*pb.CancelReply, error) {
-	log.Printf("[Back server]: Received cancel request #%d.%d", in.GetID(), in.GetInnerID())
+	log.Printf("[Back server]: Cancel %d.%d", in.GetID(), in.GetInnerID())
 
 	compositeID := CompositeID{ID: in.GetID(), InnerID: in.GetInnerID()}
 	if _, exists := activeRequests[compositeID]; exists {
@@ -103,7 +103,7 @@ func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolutiona
 	activeRequests[compositeID] = true
 	activeRequestsLock.Unlock()
 
-	log.Printf("[Back server]: Received request %v", compositeID)
+	log.Printf("[Back server]: Received  %d.%d", compositeID.ID, compositeID.InnerID)
 
 	// Prepare reply
 	backReply := &pb.ConvolutionalLayerBackReply{ID: in.GetID(), InnerID: in.GetInnerID()}
@@ -243,7 +243,7 @@ func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolutiona
 			// signal as deactivated
 			Active -= 1
 			ActiveChannel <- Active
-			return nil, status.Error(codes.Canceled, fmt.Sprintf("Request #%v cancelled as requested", compositeID))
+			return nil, status.Error(codes.Canceled, fmt.Sprintf("Request %d.%d cancelled as requested", compositeID.ID, compositeID.InnerID))
 		}
 		// Fake delay by CPU
 		time.Sleep(time.Duration(time.Since(start).Seconds()*(FakeCPUScale-1)) * time.Second)
@@ -256,6 +256,8 @@ func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolutiona
 	// signal as deactivated
 	Active -= 1
 	ActiveChannel <- Active
+
+	log.Printf("[Back server]: Completed %d.%d", compositeID.ID, compositeID.InnerID)
 
 	// send response
 	return backReply, nil

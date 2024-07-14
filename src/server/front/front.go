@@ -68,8 +68,6 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	var id int32 = counter
 	counterLock.Unlock()
 
-	log.Printf("[Front]: Request #%d started.", id)
-
 	// Compute parallelization parameters
 	var actualParallelWorkers int
 	var actualReplicationGrade int
@@ -80,7 +78,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	}
 	actualReplicationGrade = min(*ReplicationGrade, actualParallelWorkers)
 
-	log.Printf("[Front]: Parallel workers: %d, Replication grade: %d", actualParallelWorkers, actualReplicationGrade)
+	log.Printf("[Front]: Request #%d started. Parallel workers: %d, Replication grade: %d", id, actualParallelWorkers, actualReplicationGrade)
 
 	// Split kernels into blocks
 	kernelsMap := make(map[int][]*pb.Matrix)
@@ -117,9 +115,9 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	}
 
 	// Test code
-	for i := 0; i < actualParallelWorkers; i++ {
-		log.Printf("[Front]: Indexes: %v", indexesMap[i])
-	}
+	// for i := 0; i < actualParallelWorkers; i++ {
+	// 	log.Printf("[Front]: Indexes: %v", indexesMap[i])
+	// }
 
 	// Get first workers
 	workersMapsLock := sync.RWMutex{}
@@ -153,6 +151,8 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 				// Select the worker
 				var activeWorker ActiveWorker
 				addr := workersMap[i].Info.WorkerAddress
+
+				log.Printf("[Front]: Sending %d.%d (%v) to %s", id, i, indexesMap[i], addr)
 
 				// Set up a connection to the gRPC server
 				conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -205,10 +205,10 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 					// Check if reply is not avaible due to size too big
 					s, ok := status.FromError(err)
 					if ok && s.Code() == codes.ResourceExhausted {
-						log.Printf("[Front]: Response: #%d: Resource exhausted error occurred: %s by %s.", id, s.Message(), addr)
+						log.Printf("[Front]: Response: %d.%d: Resource exhausted error occurred: %s by %s.", id, i, s.Message(), addr)
 						// #TODO: notify as fatal
 					} else if ok && s.Code() == codes.Canceled {
-						log.Printf("[Front]: Response: #%d: %s by %s.", id, s.Message(), addr)
+						log.Printf("[Front]: Cancelled %d.%d (%v) to %s", id, i, indexesMap[i], addr)
 					} else {
 						log.Printf("[Front]: %s is unreachable: %v", addr, err)
 						master.RemoveWorker(addr, "unreachable")
@@ -217,6 +217,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 					continue
 				}
 
+				log.Printf("[Front]: Received %d.%d (%v) to %s", id, i, indexesMap[i], addr)
 				// Set completed
 				completeBlocksLock.Lock()
 				newCompletedBlocks := indexesMap[i]
@@ -272,7 +273,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 				}
 			}
 
-			log.Printf("[Front]: Response: #%d; Time spent: %d ms", id, time.Since(startTime).Milliseconds())
+			log.Printf("[Front]: Response: %d complete in %d ms", id, time.Since(startTime).Milliseconds())
 			return &pb.ConvolutionalLayerFrontReply{Result: completedResult}, nil
 		}
 	}

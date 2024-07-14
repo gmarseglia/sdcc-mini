@@ -121,7 +121,7 @@ func GetWorkers(number int) []WorkerInfo {
 
 	// Increase the cost to avoid overuse on burst traffic
 	for i := 0; i < number; i++ {
-		log.Printf("[Master]: Cost of worker %s: %.2f", cheapestWorkerInfo[i].WorkerAddress, cheapestWorkerInfo[i].Cost)
+		// log.Printf("[Master]: Cost of worker %s: %.2f", cheapestWorkerInfo[i].WorkerAddress, cheapestWorkerInfo[i].Cost)
 		winfo := cheapestWorkerInfo[i]
 		winfo.Cost = float32(winfo.QueueSize+1) * (winfo.UsageCPU * 1.5)
 		WorkerInfoMap[cheapestWorkerInfo[i].WorkerAddress] = winfo
