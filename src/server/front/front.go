@@ -121,7 +121,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 
 	// Get first workers
 	workersMapsLock := sync.RWMutex{}
-	workers := master.GetWorkers(actualParallelWorkers)
+	workers := master.GetWorkers(actualParallelWorkers, nil)
 	workersMap := make(map[int]ActiveWorker)
 	for i := 0; i < actualParallelWorkers; i++ {
 		workersMap[i] = ActiveWorker{

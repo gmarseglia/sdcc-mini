@@ -93,9 +93,23 @@ func GetWorkersLen() int {
 	return len(WorkerInfoMap)
 }
 
-func GetWorkers(number int) []WorkerInfo {
+func checkIn(target WorkerInfo, avoidList []WorkerInfo) bool {
+	if avoidList == nil {
+		return false
+	}
+	for _, info := range avoidList {
+		if target.WorkerAddress == info.WorkerAddress {
+			return false
+		}
+	}
+	return true
+}
+
+func GetWorkers(number int, avoidList []WorkerInfo) []WorkerInfo {
+	log.Printf("[Master]: Getting %d workers, avoid list: %v", number, avoidList)
+
 	// Wait for workers to be added
-	for len(WorkerInfoMap) < number {
+	for len(WorkerInfoMap) < 1 {
 		time.Sleep(time.Second * 1)
 	}
 
@@ -107,14 +121,21 @@ func GetWorkers(number int) []WorkerInfo {
 	// Find the cheapest worker
 	WorkerInfoMapLock.Lock()
 
-	for _, info := range WorkerInfoMap {
-		// log.Printf("[Master]: Cost of worker %s: %.2f", info.WorkerAddress, info.Cost)
-		for i := 0; i < number; i++ {
-			if info.Cost <= cheapestWorkerInfo[i].Cost {
-				// Translate the array
-				copy(cheapestWorkerInfo[i+1:], cheapestWorkerInfo[i:number-1])
-				cheapestWorkerInfo[i] = info
-				break
+	found := 0
+	skipAvoidList := false
+	for found < number {
+		for _, info := range WorkerInfoMap {
+			for i := found; i < number; i++ {
+				if info.Cost <= cheapestWorkerInfo[i].Cost && (skipAvoidList || !checkIn(info, avoidList)) {
+					// Translate the array
+					found++
+					copy(cheapestWorkerInfo[i+1:], cheapestWorkerInfo[i:number-1])
+					cheapestWorkerInfo[i] = info
+					break
+				}
+			}
+			if found == 0 {
+				skipAvoidList = true
 			}
 		}
 	}
