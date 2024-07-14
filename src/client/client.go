@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"sync"
@@ -86,7 +85,7 @@ func convolutionalRun(param int) {
 
 	// Settings
 	targetSize := 1000
-	kernelNum := int(10 * math.Pow(float64(10-param), 2))
+	kernelNum := 100
 	kernelSize := 3
 	avgPoolSize := 1000
 	useKernels := kernelSize > 0

@@ -88,6 +88,7 @@ func RemoveWorker(targetWorkerAddr string, cause string) {
 	_, exists := WorkerInfoMap[targetWorkerAddr]
 	if exists {
 		delete(WorkerInfoMap, targetWorkerAddr)
+		workerChannel <- len(WorkerInfoMap)
 		log.Printf("[Master]: Deleted worker %s due to %s", targetWorkerAddr, cause)
 	}
 	WorkerInfoMapLock.Unlock()
@@ -100,14 +101,17 @@ func GetWorkers(number int) []WorkerInfo {
 	}
 
 	var cheapestWorkerInfo = make([]WorkerInfo, number)
+	for i := 0; i < number; i++ {
+		cheapestWorkerInfo[i] = WorkerInfo{Cost: float32(math.Inf(1))}
+	}
 
 	// Find the cheapest worker
 	WorkerInfoMapLock.Lock()
-	for workerAddr, info := range WorkerInfoMap {
-		log.Printf("[Master]: Cost of worker %s: %.2f", workerAddr, info.Cost)
 
+	for _, info := range WorkerInfoMap {
+		// log.Printf("[Master]: Cost of worker %s: %.2f", info.WorkerAddress, info.Cost)
 		for i := 0; i < number; i++ {
-			if info.Cost < cheapestWorkerInfo[i].Cost {
+			if info.Cost <= cheapestWorkerInfo[i].Cost {
 				// Translate the array
 				copy(cheapestWorkerInfo[i+1:], cheapestWorkerInfo[i:number-1])
 				cheapestWorkerInfo[i] = info
@@ -118,9 +122,11 @@ func GetWorkers(number int) []WorkerInfo {
 
 	// Increase the cost to avoid overuse on burst traffic
 	for i := 0; i < number; i++ {
+		log.Printf("[Master]: Cost of worker %s: %.2f", cheapestWorkerInfo[i].WorkerAddress, cheapestWorkerInfo[i].Cost)
 		winfo := cheapestWorkerInfo[i]
-		winfo.Cost = float32(winfo.QueueSize+1) * (winfo.UsageCPU * 1.1)
+		winfo.Cost = float32(winfo.QueueSize+1) * (winfo.UsageCPU * 1.5)
 		WorkerInfoMap[cheapestWorkerInfo[i].WorkerAddress] = winfo
+		cheapestWorkerInfo[i] = winfo
 	}
 
 	WorkerInfoMapLock.Unlock()

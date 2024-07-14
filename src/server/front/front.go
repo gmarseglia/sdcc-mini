@@ -55,8 +55,6 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 		// get worker
 		workers := master.GetWorkers(*ParallelWorkers)
 
-		log.Printf("[Front]: Request #%d, %d workers chosen.", id, len(workers))
-
 		// Prepare the channel for sycnhronization
 		successChan := make(chan bool)
 
@@ -72,6 +70,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 				conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 				if err != nil {
 					log.Printf("[Front]: %s did not connect: %v", addr, err)
+					master.RemoveWorker(addr, "not connected")
 					successChan <- false
 					return
 				}
