@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	pb "mini/proto"
 	"mini/server/master"
 	"net"
+	"sort"
 	"sync"
 	"time"
 
@@ -18,11 +20,12 @@ import (
 )
 
 var (
-	FrontPort       = flag.String("FrontPort", "", "The port for front service.")
-	ParallelWorkers = flag.Int("ParallelWorkers", 2, "The number of parallel workers.")
-	counter         int
-	counterLock     sync.Mutex
-	s               *grpc.Server
+	FrontPort        = flag.String("FrontPort", "", "The port for front service.")
+	ParallelWorkers  = flag.Int("ParallelWorkers", 2, "The number of parallel workers.")
+	ReplicationGrade = flag.Int("ReplicationGrade", 2, "The replication grade.")
+	counter          int
+	counterLock      sync.Mutex
+	s                *grpc.Server
 )
 
 // FrontServer is used to implement the MiniServer interface
@@ -31,9 +34,20 @@ type FrontServer struct {
 }
 
 type ActiveWorker struct {
-	Info   master.WorkerInfo
-	Active bool
-	Client *pb.BackClient
+	Info    master.WorkerInfo
+	Active  bool
+	Client  *pb.BackClient
+	Indexes []int
+	Request *pb.ConvolutionalLayerBackRequest
+}
+
+func assignIndexes(parallelWorkers int, replicationGrade int, index int) []int {
+	result := make([]int, replicationGrade)
+	for i := 0; i < replicationGrade; i++ {
+		result[i] = (index + i) % parallelWorkers
+	}
+	sort.Ints(result)
+	return result
 }
 
 func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.ConvolutionalLayerFrontRequest) (*pb.ConvolutionalLayerFrontReply, error) {
@@ -44,6 +58,63 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	counterLock.Unlock()
 
 	log.Printf("[Front]: Request #%d started.", id)
+
+	var actualParallelWorkers int
+	var actualReplicationGrade int
+	if in.GetUseKernels() {
+		actualParallelWorkers = min(*ParallelWorkers, master.GetWorkersLen(), len(in.Kernel))
+	} else {
+		actualParallelWorkers = 1
+	}
+	actualReplicationGrade = min(*ReplicationGrade, actualParallelWorkers)
+
+	log.Printf("[Front]: Parallel workers: %d, Replication grade: %d", actualParallelWorkers, actualReplicationGrade)
+
+	// Split kernels into blocks
+	kernelsMap := make(map[int][]*pb.Matrix)
+	var kernelBlockSize int = int(math.Floor(float64(len(in.Kernel)) / float64(actualParallelWorkers)))
+	for i := 0; i < actualParallelWorkers-1; i++ {
+		kernelsMap[i] = in.Kernel[i*kernelBlockSize : min((i+1)*kernelBlockSize, len(in.Kernel))]
+	}
+	kernelsMap[actualParallelWorkers-1] = in.Kernel[(actualParallelWorkers-1)*kernelBlockSize : len(in.Kernel)]
+
+	// Get workers and assign
+	workers := master.GetWorkers(actualParallelWorkers)
+	activeWorker := make([]ActiveWorker, actualParallelWorkers)
+	// For each worker
+	for i := 0; i < len(workers); i++ {
+		// Compute blocks indexes
+		workerBlocks := assignIndexes(actualParallelWorkers, actualReplicationGrade, i)
+
+		// Append all kernels to produce the list
+		var workerKernels []*pb.Matrix
+		for j := 0; j < len(workerBlocks); j++ {
+			block := kernelsMap[workerBlocks[j]]
+			workerKernels = append(workerKernels, block...)
+		}
+
+		// Create the active worker
+		activeWorker[i] = ActiveWorker{
+			Info:    workers[i],
+			Active:  false,
+			Client:  nil,
+			Indexes: workerBlocks,
+			Request: &pb.ConvolutionalLayerBackRequest{
+				Target:      in.GetTarget(),
+				Kernel:      workerKernels,
+				AvgPoolSize: in.GetAvgPoolSize(),
+				UseKernels:  in.GetUseKernels(),
+				UseSigmoid:  in.GetUseSigmoid(),
+				ID:          int32(id)},
+		}
+	}
+
+	// Test code
+	for i := 0; i < len(activeWorker); i++ {
+		log.Printf("[Front]: Worker %d: %s", i, activeWorker[i].Info.WorkerAddress)
+		log.Printf("[Front]: Indexes: %v", activeWorker[i].Indexes)
+		log.Printf("[Front]: Request.Kernel: %v", activeWorker[i].Request.Kernel)
+	}
 
 	// Create the back request
 	backRequest := pb.ConvolutionalLayerBackRequest{

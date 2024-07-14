@@ -84,10 +84,10 @@ func convolutionalRun(param int) {
 	counterLock.Unlock()
 
 	// Settings
-	targetSize := 1000
-	kernelNum := 100
-	kernelSize := 3
-	avgPoolSize := 1000
+	targetSize := 10
+	kernelNum := 6
+	kernelSize := 1
+	avgPoolSize := targetSize
 	useKernels := kernelSize > 0
 	useSigmoid := true
 
@@ -111,6 +111,7 @@ func convolutionalRun(param int) {
 
 	for i := 0; i < kernelNum; i++ {
 		frontRequest.Kernel = append(frontRequest.Kernel, utils.MatrixToProto(utils.GenerateRandomMatrix(kernelSize, kernelSize)))
+		utils.PrettyPrint(fmt.Sprintf("Kernel %d", i), utils.ProtoToMatrix(frontRequest.Kernel[i]))
 	}
 
 	frontRequest.AvgPoolSize = int32(avgPoolSize)

@@ -87,6 +87,12 @@ func RemoveWorker(targetWorkerAddr string, cause string) {
 	WorkerInfoMapLock.Unlock()
 }
 
+func GetWorkersLen() int {
+	WorkerInfoMapLock.RLock()
+	defer WorkerInfoMapLock.RUnlock()
+	return len(WorkerInfoMap)
+}
+
 func GetWorkers(number int) []WorkerInfo {
 	// Wait for workers to be added
 	for len(WorkerInfoMap) < number {
