@@ -85,7 +85,7 @@ func convolutionalRun(param int) {
 
 	// Settings
 	targetSize := 10
-	kernelNum := 6
+	kernelNum := 8
 	kernelSize := 1
 	avgPoolSize := targetSize
 	useKernels := kernelSize > 0

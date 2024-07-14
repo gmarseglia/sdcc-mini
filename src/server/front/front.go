@@ -78,42 +78,29 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	}
 	kernelsMap[actualParallelWorkers-1] = in.Kernel[(actualParallelWorkers-1)*kernelBlockSize : len(in.Kernel)]
 
-	// Get workers and assign
-	workers := master.GetWorkers(actualParallelWorkers)
-	activeWorker := make([]ActiveWorker, actualParallelWorkers)
-	// For each worker
-	for i := 0; i < len(workers); i++ {
+	// Join blocks into splits
+	splitsMap := make(map[int][]*pb.Matrix)
+	indexesMap := make(map[int][]int)
+	for i := 0; i < actualParallelWorkers; i++ {
 		// Compute blocks indexes
-		workerBlocks := assignIndexes(actualParallelWorkers, actualReplicationGrade, i)
+		indexesMap[i] = assignIndexes(actualParallelWorkers, actualReplicationGrade, i)
+		splitBlocks := indexesMap[i]
 
 		// Append all kernels to produce the list
-		var workerKernels []*pb.Matrix
-		for j := 0; j < len(workerBlocks); j++ {
-			block := kernelsMap[workerBlocks[j]]
-			workerKernels = append(workerKernels, block...)
+		var split []*pb.Matrix
+		for j := 0; j < len(splitBlocks); j++ {
+			block := kernelsMap[splitBlocks[j]]
+			split = append(split, block...)
 		}
 
-		// Create the active worker
-		activeWorker[i] = ActiveWorker{
-			Info:    workers[i],
-			Active:  false,
-			Client:  nil,
-			Indexes: workerBlocks,
-			Request: &pb.ConvolutionalLayerBackRequest{
-				Target:      in.GetTarget(),
-				Kernel:      workerKernels,
-				AvgPoolSize: in.GetAvgPoolSize(),
-				UseKernels:  in.GetUseKernels(),
-				UseSigmoid:  in.GetUseSigmoid(),
-				ID:          int32(id)},
-		}
+		// Add to map
+		splitsMap[i] = split
 	}
 
 	// Test code
-	for i := 0; i < len(activeWorker); i++ {
-		log.Printf("[Front]: Worker %d: %s", i, activeWorker[i].Info.WorkerAddress)
-		log.Printf("[Front]: Indexes: %v", activeWorker[i].Indexes)
-		log.Printf("[Front]: Request.Kernel: %v", activeWorker[i].Request.Kernel)
+	for i := 0; i < actualParallelWorkers; i++ {
+		log.Printf("[Front]: Indexes: %v", indexesMap[i])
+		log.Printf("[Front]: Request.Kernel: %v", splitsMap[i])
 	}
 
 	// Create the back request
