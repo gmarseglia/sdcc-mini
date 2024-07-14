@@ -18,63 +18,16 @@ import (
 )
 
 var (
-	FrontPort   = flag.String("FrontPort", "", "The port for front service.")
-	counter     int
-	counterLock sync.Mutex
-	s           *grpc.Server
+	FrontPort       = flag.String("FrontPort", "", "The port for front service.")
+	ParallelWorkers = flag.Int("ParallelWorkers", 2, "The number of parallel workers.")
+	counter         int
+	counterLock     sync.Mutex
+	s               *grpc.Server
 )
 
 // FrontServer is used to implement the MiniServer interface
 type FrontServer struct {
 	pb.UnimplementedFrontServer
-}
-
-// SayHello implements helloworld.GreeterServer
-func (s *FrontServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
-
-	// generate ID
-	counterLock.Lock()
-	counter += 1
-	var id = counter
-	counterLock.Unlock()
-
-	log.Printf("[Front]: Request #%d started.", id)
-
-	for {
-		// get worker
-		addr := master.GetWorker()
-
-		// Set up a connection to the gRPC server
-		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			log.Fatalf("[Front]: Did not connect: %v", err)
-		}
-		defer conn.Close()
-
-		// create the client object
-		c := pb.NewBackClient(conn)
-
-		// create the context
-		ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
-		defer cancel()
-
-		// time the call
-		startTime := time.Now()
-
-		// contact the server
-		WorkerResponse, err := c.Choice(ctxInternal, in)
-		if err != nil {
-			// log.Printf("could not greet: %v", err)
-			log.Printf("[Front]: %s is unreachable.", addr)
-			master.RemoveWorker(addr, "unreachable")
-			continue
-		}
-
-		log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms", id, WorkerResponse.GetReplyID(), time.Since(startTime).Milliseconds())
-
-		// send response
-		return &pb.ChoiceReply{Option: WorkerResponse.GetOption(), ReplyID: int32(id)}, nil
-	}
 }
 
 func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.ConvolutionalLayerFrontRequest) (*pb.ConvolutionalLayerFrontReply, error) {
@@ -86,57 +39,87 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 
 	log.Printf("[Front]: Request #%d started.", id)
 
+	// Create the back request
+	backRequest := pb.ConvolutionalLayerBackRequest{
+		Target:      in.GetTarget(),
+		Kernel:      in.GetKernel(),
+		AvgPoolSize: in.GetAvgPoolSize(),
+		UseKernels:  in.GetUseKernels(),
+		UseSigmoid:  in.GetUseSigmoid(),
+		ID:          int32(id)}
+
+	// Allocate space for the response
+	response := pb.ConvolutionalLayerFrontReply{}
+
 	for {
 		// get worker
-		addr := master.GetWorker()
+		workers := master.GetWorkers(*ParallelWorkers)
 
-		// Set up a connection to the gRPC server
-		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			log.Fatalf("[Front]: Did not connect: %v", err)
-		}
-		defer conn.Close()
+		log.Printf("[Front]: Request #%d, %d workers chosen.", id, len(workers))
 
-		// create the client object
-		c := pb.NewBackClient(conn)
-
-		// create the context
-		ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
-		defer cancel()
+		// Prepare the channel for sycnhronization
+		successChan := make(chan bool)
 
 		// time the call
 		startTime := time.Now()
 
-		// Create the back request
-		backRequest := pb.ConvolutionalLayerBackRequest{
-			Target:      in.GetTarget(),
-			Kernel:      in.GetKernel(),
-			AvgPoolSize: in.GetAvgPoolSize(),
-			UseKernels:  in.GetUseKernels(),
-			UseSigmoid:  in.GetUseSigmoid(),
-			ID:          int32(id)}
+		for i := 0; i < len(workers); i++ {
+			go func(i int, actualReply *pb.ConvolutionalLayerFrontReply) {
+				// Select the worker
+				addr := workers[i].WorkerAddress
 
-		// contact the server
-		WorkerResponse, err := c.ConvolutionalLayer(ctxInternal, &backRequest)
+				// Set up a connection to the gRPC server
+				conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+				if err != nil {
+					log.Printf("[Front]: %s did not connect: %v", addr, err)
+					successChan <- false
+					return
+				}
+				defer conn.Close()
 
-		if err != nil {
-			// Check if reply is not avaible due to size too big
-			s, ok := status.FromError(err)
-			if ok && s.Code() == codes.ResourceExhausted {
-				log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms, Resource exhausted error occurred: %s.",
-					id, WorkerResponse.GetID(), time.Since(startTime).Milliseconds(), s.Message())
-				return nil, err
-			} else {
-				log.Printf("[Front]: %s is unreachable: %v", addr, err)
-				master.RemoveWorker(addr, "unreachable")
-				continue
-			}
+				// create the client object
+				c := pb.NewBackClient(conn)
+
+				// create the context
+				ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+				defer cancel()
+
+				// contact the server
+				WorkerResponse, err := c.ConvolutionalLayer(ctxInternal, &backRequest)
+
+				// Check if error
+				if err != nil {
+					// Check if reply is not avaible due to size too big
+					s, ok := status.FromError(err)
+					if ok && s.Code() == codes.ResourceExhausted {
+						log.Printf("[Front]: Response: #%d: Resource exhausted error occurred: %s.", id, s.Message())
+					} else {
+						log.Printf("[Front]: %s is unreachable: %v", addr, err)
+						master.RemoveWorker(addr, "unreachable")
+						// #TODO: assign a new worker
+					}
+					// Notify failure
+					successChan <- false
+				} else {
+					// Setup actual reply
+					response.ID = int32(WorkerResponse.GetID())
+					response.Result = WorkerResponse.GetResult()
+
+					// Notify success
+					successChan <- true
+				}
+			}(i, &response)
 		}
 
-		log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms", id, WorkerResponse.GetID(), time.Since(startTime).Milliseconds())
-
-		// send response
-		return &pb.ConvolutionalLayerFrontReply{Result: WorkerResponse.GetResult(), ID: int32(id)}, nil
+		for failedWorkes := 0; failedWorkes < len(workers); {
+			outcome := <-successChan
+			if outcome {
+				log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms", id, response.GetID(), time.Since(startTime).Milliseconds())
+				return &response, nil
+			} else {
+				failedWorkes += 1
+			}
+		}
 	}
 }
 

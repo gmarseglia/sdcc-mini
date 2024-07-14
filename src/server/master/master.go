@@ -27,10 +27,17 @@ type MasterServer struct {
 }
 
 type WorkerInfo struct {
-	QueueSize int32
-	UsageCPU  float32
-	Cost      float32
-	LastPing  time.Time
+	WorkerAddress  string
+	QueueSize      int32
+	UsageCPU       float32
+	Cost           float32
+	LastPing       time.Time
+	ActiveRequests map[string]JobInfo
+}
+
+type JobInfo struct {
+	Type    string
+	Request interface{}
 }
 
 // SayHello implementation
@@ -44,8 +51,10 @@ func (s *MasterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequ
 	} else {
 		WorkerInfoMapLock.Lock()
 		WorkerInfoMap[in.GetWorkerAddress()] = WorkerInfo{
-			Cost:     float32(math.Inf(1)),
-			LastPing: time.Now(),
+			WorkerAddress:  in.GetWorkerAddress(),
+			Cost:           float32(math.Inf(1)),
+			LastPing:       time.Now(),
+			ActiveRequests: make(map[string]JobInfo),
 		}
 		workerChannel <- len(WorkerInfoMap)
 		WorkerInfoMapLock.Unlock()
@@ -59,12 +68,12 @@ func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.PingRequest) (*pb.
 	// Update worker info
 	cost := in.GetUsageCPU() * (float32(in.QueueSize) + 1)
 	WorkerInfoMapLock.Lock()
-	WorkerInfoMap[in.GetWorkerAddress()] = WorkerInfo{
-		QueueSize: in.GetQueueSize(),
-		UsageCPU:  in.GetUsageCPU(),
-		Cost:      cost,
-		LastPing:  time.Now(),
-	}
+	winfo := WorkerInfoMap[in.GetWorkerAddress()]
+	winfo.QueueSize = in.GetQueueSize()
+	winfo.UsageCPU = in.GetUsageCPU()
+	winfo.Cost = cost
+	winfo.LastPing = time.Now()
+	WorkerInfoMap[in.GetWorkerAddress()] = winfo
 	WorkerInfoMapLock.Unlock()
 
 	// log.Printf("[Master]: Cost of worker %s: %.2f", in.GetWorkerAddress(), cost)
@@ -84,33 +93,39 @@ func RemoveWorker(targetWorkerAddr string, cause string) {
 	WorkerInfoMapLock.Unlock()
 }
 
-func GetWorker() string {
+func GetWorkers(number int) []WorkerInfo {
 	// Wait for workers to be added
-	for len(WorkerInfoMap) == 0 {
+	for len(WorkerInfoMap) < number {
 		time.Sleep(time.Second * 1)
 	}
 
-	WorkerInfoMapLock.Lock()
+	var cheapestWorkerInfo = make([]WorkerInfo, number)
 
 	// Find the cheapest worker
-	var cheapestWorker string
-	var cheapestWorkerInfo WorkerInfo
-	var lowestCost float32 = float32(math.Inf(1))
+	WorkerInfoMapLock.Lock()
 	for workerAddr, info := range WorkerInfoMap {
 		log.Printf("[Master]: Cost of worker %s: %.2f", workerAddr, info.Cost)
-		if info.Cost < lowestCost {
-			lowestCost = info.Cost
-			cheapestWorker = workerAddr
-			cheapestWorkerInfo = info
+
+		for i := 0; i < number; i++ {
+			if info.Cost < cheapestWorkerInfo[i].Cost {
+				// Translate the array
+				copy(cheapestWorkerInfo[i+1:], cheapestWorkerInfo[i:number-1])
+				cheapestWorkerInfo[i] = info
+				break
+			}
 		}
 	}
+
 	// Increase the cost to avoid overuse on burst traffic
-	cheapestWorkerInfo.Cost = float32(cheapestWorkerInfo.QueueSize+1) * (cheapestWorkerInfo.UsageCPU * 1.1)
-	WorkerInfoMap[cheapestWorker] = cheapestWorkerInfo
+	for i := 0; i < number; i++ {
+		winfo := cheapestWorkerInfo[i]
+		winfo.Cost = float32(winfo.QueueSize+1) * (winfo.UsageCPU * 1.1)
+		WorkerInfoMap[cheapestWorkerInfo[i].WorkerAddress] = winfo
+	}
 
 	WorkerInfoMapLock.Unlock()
 
-	return cheapestWorker
+	return cheapestWorkerInfo
 }
 
 func monitorWorker() {
