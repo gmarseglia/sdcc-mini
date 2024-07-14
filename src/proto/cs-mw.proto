@@ -43,11 +43,13 @@ message ConvolutionalLayerBackRequest {
     bool UseKernels = 5;
     bool UseSigmoid = 6;
     int32 ID = 7;
+    int32 InnerID = 8;
 }
 
 message ConvolutionalLayerBackReply {
     repeated Matrix Result = 1;
     int32 ID = 2;
+    int32 InnerID = 3;
 }
 
 message PingRequest {
@@ -70,6 +72,7 @@ message NotifyReply {
 
 message CancelRequest {
     int32 ID = 1;
+    int32 InnerID = 2;
 }
 
 message CancelReply {
