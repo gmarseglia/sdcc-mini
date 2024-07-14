@@ -91,7 +91,6 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	kernelsMap[actualParallelWorkers-1] = in.Kernel[(actualParallelWorkers-1)*kernelBlockSize : len(in.Kernel)]
 
 	// Join blocks into splits
-	splitsMap := make(map[int][]*pb.Matrix)
 	indexesMap := make(map[int][]int)
 	backRequestMap := make(map[int]*pb.ConvolutionalLayerBackRequest)
 	for i := 0; i < actualParallelWorkers; i++ {
@@ -105,9 +104,6 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 			block := kernelsMap[splitBlocks[j]]
 			split = append(split, block...)
 		}
-
-		// Add to map
-		splitsMap[i] = split
 
 		// Create back request
 		backRequestMap[i] = &pb.ConvolutionalLayerBackRequest{
@@ -123,10 +119,10 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	// Test code
 	for i := 0; i < actualParallelWorkers; i++ {
 		log.Printf("[Front]: Indexes: %v", indexesMap[i])
-		// log.Printf("[Front]: Request.Kernel: %v", splitsMap[i])
 	}
 
 	// Get first workers
+	workersMapsLock := sync.RWMutex{}
 	workers := master.GetWorkers(actualParallelWorkers)
 	workersMap := make(map[int]ActiveWorker)
 	for i := 0; i < actualParallelWorkers; i++ {
@@ -144,12 +140,10 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	// Initialize completedBlocks and completedResult
 	completeBlocksLock := sync.RWMutex{}
 	completedBlocks := make(map[int]bool, actualParallelWorkers)
-	completeBlocksLock.Lock()
 	for i := 0; i < actualParallelWorkers; i++ {
 		completedBlocks[i] = false
 	}
 	completedResult := make([]*pb.Matrix, len(in.Kernel))
-	completeBlocksLock.Unlock()
 
 	// For each part
 	for i := 0; i < actualParallelWorkers; i++ {
@@ -172,26 +166,39 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 
 				// create the client object
 				c := pb.NewBackClient(conn)
+
+				workersMapsLock.RLock()
 				activeWorker = workersMap[i]
+				workersMapsLock.RUnlock()
 				activeWorker.Client = &c
+				workersMapsLock.Lock()
 				workersMap[i] = activeWorker
+				workersMapsLock.Unlock()
 
 				// create the context
 				ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 				defer cancel()
 
 				// Set workers as active
+				workersMapsLock.RLock()
 				activeWorker = workersMap[i]
+				workersMapsLock.RUnlock()
 				activeWorker.Active = true
+				workersMapsLock.Lock()
 				workersMap[i] = activeWorker
+				workersMapsLock.Unlock()
 
 				// contact the server
 				WorkerResponse, err := c.ConvolutionalLayer(ctxInternal, backRequestMap[i])
 
 				// Set workers as inactive
+				workersMapsLock.RLock()
 				activeWorker = workersMap[i]
+				workersMapsLock.RUnlock()
 				activeWorker.Active = false
+				workersMapsLock.Lock()
 				workersMap[i] = activeWorker
+				workersMapsLock.Unlock()
 
 				// Check if error
 				if err != nil {
@@ -220,12 +227,12 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 					var begin int = completedBlockIndex * kernelBlockSize
 					var end int
 					if completedBlockIndex == actualParallelWorkers-1 {
-						end = len(WorkerResponse.GetResult())
+						end = len(in.Kernel)
 					} else {
 						end = begin + kernelBlockSize
 					}
-					for j := begin; j < end; j++ {
-						completedResult[j] = WorkerResponse.GetResult()[j]
+					for k := begin; k < end; k++ {
+						completedResult[k] = WorkerResponse.GetResult()[k-begin]
 					}
 				}
 				completeBlocksLock.Unlock()

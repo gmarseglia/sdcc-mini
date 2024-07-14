@@ -84,12 +84,12 @@ func convolutionalRun(param int) {
 	counterLock.Unlock()
 
 	// Settings
-	targetSize := 4
-	kernelNum := 3
+	targetSize := 500
+	kernelNum := 80
 	kernelSize := 3
-	avgPoolSize := 1
+	avgPoolSize := 500
 	useKernels := kernelSize > 0
-	useSigmoid := false
+	useSigmoid := true
 
 	exptecedSize := max(
 		(targetSize*targetSize*4)+(kernelSize*kernelSize*kernelNum)*4,
@@ -186,7 +186,7 @@ func main() {
 	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
 		// go choice()
-		// time.Sleep(time.Millisecond * time.Duration(100*i))
+		time.Sleep(time.Millisecond * time.Duration(100))
 		go convolutionalRun(i)
 	}
 
