@@ -68,6 +68,14 @@ message NotifyReply {
     string Result = 1;
 }
 
+message CancelRequest {
+    int32 ID = 1;
+}
+
+message CancelReply {
+    string Result = 1;
+}
+
 service Front {
     // #TODO: remove if working
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
@@ -76,6 +84,7 @@ service Front {
 
 service Back {
     // #TODO: remove if working
+    rpc Cancel(CancelRequest) returns (CancelReply) {}
     rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
     rpc ConvolutionalLayer(ConvolutionalLayerBackRequest) returns (ConvolutionalLayerBackReply) {}
 }

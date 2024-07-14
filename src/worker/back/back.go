@@ -10,18 +10,24 @@ import (
 	"mini/utils"
 	"net"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
-	HostPort      string = ""
-	Active        int
-	ActiveChannel = make(chan int, 1000)
-	counter       int
-	counterLock   sync.Mutex
-	Prng          = rand.New(rand.NewSource(14))
-	s             *grpc.Server
+	HostPort           string = ""
+	FakeCPUScale       float64
+	Active             int
+	ActiveChannel      = make(chan int, 1000)
+	activeRequests     = make(map[int32]bool)
+	activeRequestsLock sync.RWMutex
+	counter            int
+	counterLock        sync.Mutex
+	Prng               = rand.New(rand.NewSource(14))
+	s                  *grpc.Server
 )
 
 type backServer struct {
@@ -60,6 +66,24 @@ func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.Ch
 	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
 }
 
+func (s *backServer) Cancel(ctx context.Context, in *pb.CancelRequest) (*pb.CancelReply, error) {
+	log.Printf("[Back server]: Received cancel request #%d", in.GetID())
+
+	if _, exists := activeRequests[in.GetID()]; exists {
+		activeRequestsLock.Lock()
+		activeRequests[in.GetID()] = false
+		activeRequestsLock.Unlock()
+	}
+
+	return &pb.CancelReply{Result: "OK"}, nil
+}
+
+func checkStillActive(requestID int32) bool {
+	activeRequestsLock.RLock()
+	defer activeRequestsLock.RUnlock()
+	return activeRequests[requestID]
+}
+
 func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.ConvolutionalLayerBackRequest) (*pb.ConvolutionalLayerBackReply, error) {
 	// signal as activated
 	Active += 1
@@ -67,6 +91,11 @@ func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolutiona
 
 	// log response
 	requestID := in.GetID()
+
+	activeRequestsLock.Lock()
+	activeRequests[requestID] = true
+	activeRequestsLock.Unlock()
+
 	log.Printf("[Back server]: Received request #%d", requestID)
 
 	// Prepare reply
@@ -75,12 +104,14 @@ func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolutiona
 	useSigmoid := in.GetUseSigmoid()
 
 	// Padding
-
 	target := utils.ProtoToMatrix(in.GetTarget())
 	targetHeight := len(target)
 	targetWidth := len(target[0])
 
 	if in.GetUseKernels() {
+		// Begin timing
+		start := time.Now()
+
 		kernelWidth := len(utils.ProtoToMatrix(in.Kernel[0]))
 		kernelHeight := len(utils.ProtoToMatrix(in.Kernel[0])[0])
 
@@ -157,8 +188,20 @@ func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolutiona
 				// Append the result
 				backReply.Result = append(backReply.Result, utils.MatrixToProto(convoluted))
 			}
+
+			if !checkStillActive(requestID) {
+				// signal as deactivated
+				Active -= 1
+				ActiveChannel <- Active
+				return nil, status.Error(codes.Canceled, "cancelled as requested")
+			}
+			// Fake delay by CPU
+			time.Sleep(time.Duration(time.Since(start).Seconds()*(FakeCPUScale-1)) * time.Second)
+
 		}
 	} else {
+		start := time.Now()
+
 		poolSize := int(in.GetAvgPoolSize())
 		if poolSize > 1 {
 			pooledHeight := int(targetHeight / poolSize)
@@ -188,7 +231,20 @@ func (s *backServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolutiona
 		} else {
 			backReply.Result = append(backReply.Result, utils.MatrixToProto(target))
 		}
+
+		if !checkStillActive(requestID) {
+			// signal as deactivated
+			Active -= 1
+			ActiveChannel <- Active
+			return nil, status.Error(codes.Canceled, fmt.Sprintf("Request #%d cancelled as requested", requestID))
+		}
+		// Fake delay by CPU
+		time.Sleep(time.Duration(time.Since(start).Seconds()*(FakeCPUScale-1)) * time.Second)
 	}
+
+	activeRequestsLock.Lock()
+	delete(activeRequests, requestID)
+	activeRequestsLock.Unlock()
 
 	// signal as deactivated
 	Active -= 1

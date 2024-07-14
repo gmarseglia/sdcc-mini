@@ -30,6 +30,12 @@ type FrontServer struct {
 	pb.UnimplementedFrontServer
 }
 
+type ActiveWorker struct {
+	Info   master.WorkerInfo
+	Active bool
+	Client *pb.BackClient
+}
+
 func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.ConvolutionalLayerFrontRequest) (*pb.ConvolutionalLayerFrontReply, error) {
 	// generate ID
 	counterLock.Lock()
@@ -54,6 +60,14 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	for {
 		// get worker
 		workers := master.GetWorkers(*ParallelWorkers)
+		activeWorker := make([]ActiveWorker, len(workers))
+		for i := 0; i < len(workers); i++ {
+			activeWorker[i] = ActiveWorker{
+				Info:   workers[i],
+				Active: false,
+				Client: nil,
+			}
+		}
 
 		// Prepare the channel for sycnhronization
 		successChan := make(chan bool)
@@ -78,35 +92,44 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 
 				// create the client object
 				c := pb.NewBackClient(conn)
+				activeWorker[i].Client = &c
 
 				// create the context
 				ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 				defer cancel()
 
+				// Set workers as active
+				activeWorker[i].Active = true
+
 				// contact the server
 				WorkerResponse, err := c.ConvolutionalLayer(ctxInternal, &backRequest)
+
+				// Set workers as inactive
+				activeWorker[i].Active = false
 
 				// Check if error
 				if err != nil {
 					// Check if reply is not avaible due to size too big
 					s, ok := status.FromError(err)
 					if ok && s.Code() == codes.ResourceExhausted {
-						log.Printf("[Front]: Response: #%d: Resource exhausted error occurred: %s.", id, s.Message())
+						log.Printf("[Front]: Response: #%d: Resource exhausted error occurred: %s by %s.", id, s.Message(), addr)
+					} else if ok && s.Code() == codes.Canceled {
+						log.Printf("[Front]: Response: #%d: %s by %s.", id, s.Message(), addr)
 					} else {
 						log.Printf("[Front]: %s is unreachable: %v", addr, err)
 						master.RemoveWorker(addr, "unreachable")
-						// #TODO: assign a new worker
 					}
 					// Notify failure
 					successChan <- false
-				} else {
-					// Setup actual reply
-					response.ID = int32(WorkerResponse.GetID())
-					response.Result = WorkerResponse.GetResult()
-
-					// Notify success
-					successChan <- true
+					return
 				}
+
+				// Setup actual reply
+				response.ID = int32(WorkerResponse.GetID())
+				response.Result = WorkerResponse.GetResult()
+
+				// Notify success
+				successChan <- true
 			}(i, &response)
 		}
 
@@ -114,6 +137,19 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 			outcome := <-successChan
 			if outcome {
 				log.Printf("[Front]: Response: #%d (%d); Time spent: %d ms", id, response.GetID(), time.Since(startTime).Milliseconds())
+				// Cancel the request for the active workers
+				for i := 0; i < len(workers); i++ {
+					if activeWorker[i].Active {
+						go func(i int) {
+							// create the context
+							ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+							defer cancel()
+
+							c := *activeWorker[i].Client
+							c.Cancel(ctxInternal, &pb.CancelRequest{ID: int32(id)})
+						}(i)
+					}
+				}
 				return &response, nil
 			} else {
 				failedWorkes += 1

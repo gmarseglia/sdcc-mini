@@ -34,6 +34,7 @@ func setupFields() {
 	utils.SetupFieldOptional(worker.MasterPort, "MasterPort", "55556")
 	worker.MasterFullAddr = fmt.Sprintf("%s:%s", *worker.MasterAddr, *worker.MasterPort)
 	back.HostPort = *worker.HostPort
+	back.FakeCPUScale = *FakeCPUScale
 }
 
 func stopComponentsAndExit(message string) {

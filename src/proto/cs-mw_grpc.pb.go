@@ -148,6 +148,7 @@ var Front_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	Back_Cancel_FullMethodName             = "/mini.Back/Cancel"
 	Back_Choice_FullMethodName             = "/mini.Back/Choice"
 	Back_ConvolutionalLayer_FullMethodName = "/mini.Back/ConvolutionalLayer"
 )
@@ -157,6 +158,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BackClient interface {
 	// #TODO: remove if working
+	Cancel(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*CancelReply, error)
 	Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error)
 	ConvolutionalLayer(ctx context.Context, in *ConvolutionalLayerBackRequest, opts ...grpc.CallOption) (*ConvolutionalLayerBackReply, error)
 }
@@ -167,6 +169,15 @@ type backClient struct {
 
 func NewBackClient(cc grpc.ClientConnInterface) BackClient {
 	return &backClient{cc}
+}
+
+func (c *backClient) Cancel(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*CancelReply, error) {
+	out := new(CancelReply)
+	err := c.cc.Invoke(ctx, Back_Cancel_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *backClient) Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error) {
@@ -192,6 +203,7 @@ func (c *backClient) ConvolutionalLayer(ctx context.Context, in *ConvolutionalLa
 // for forward compatibility
 type BackServer interface {
 	// #TODO: remove if working
+	Cancel(context.Context, *CancelRequest) (*CancelReply, error)
 	Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error)
 	ConvolutionalLayer(context.Context, *ConvolutionalLayerBackRequest) (*ConvolutionalLayerBackReply, error)
 	mustEmbedUnimplementedBackServer()
@@ -201,6 +213,9 @@ type BackServer interface {
 type UnimplementedBackServer struct {
 }
 
+func (UnimplementedBackServer) Cancel(context.Context, *CancelRequest) (*CancelReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
+}
 func (UnimplementedBackServer) Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Choice not implemented")
 }
@@ -218,6 +233,24 @@ type UnsafeBackServer interface {
 
 func RegisterBackServer(s grpc.ServiceRegistrar, srv BackServer) {
 	s.RegisterService(&Back_ServiceDesc, srv)
+}
+
+func _Back_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BackServer).Cancel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Back_Cancel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BackServer).Cancel(ctx, req.(*CancelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Back_Choice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -263,6 +296,10 @@ var Back_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "mini.Back",
 	HandlerType: (*BackServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Cancel",
+			Handler:    _Back_Cancel_Handler,
+		},
 		{
 			MethodName: "Choice",
 			Handler:    _Back_Choice_Handler,

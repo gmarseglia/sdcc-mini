@@ -27,17 +27,11 @@ type MasterServer struct {
 }
 
 type WorkerInfo struct {
-	WorkerAddress  string
-	QueueSize      int32
-	UsageCPU       float32
-	Cost           float32
-	LastPing       time.Time
-	ActiveRequests map[string]JobInfo
-}
-
-type JobInfo struct {
-	Type    string
-	Request interface{}
+	WorkerAddress string
+	QueueSize     int32
+	UsageCPU      float32
+	Cost          float32
+	LastPing      time.Time
 }
 
 // SayHello implementation
@@ -51,10 +45,9 @@ func (s *MasterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequ
 	} else {
 		WorkerInfoMapLock.Lock()
 		WorkerInfoMap[in.GetWorkerAddress()] = WorkerInfo{
-			WorkerAddress:  in.GetWorkerAddress(),
-			Cost:           float32(math.Inf(1)),
-			LastPing:       time.Now(),
-			ActiveRequests: make(map[string]JobInfo),
+			WorkerAddress: in.GetWorkerAddress(),
+			Cost:          float32(math.Inf(1)),
+			LastPing:      time.Now(),
 		}
 		workerChannel <- len(WorkerInfoMap)
 		WorkerInfoMapLock.Unlock()
