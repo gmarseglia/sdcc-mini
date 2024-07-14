@@ -106,7 +106,7 @@ func checkIn(target WorkerInfo, avoidList []WorkerInfo) bool {
 }
 
 func GetWorkers(number int, avoidList []WorkerInfo) []WorkerInfo {
-	log.Printf("[Master]: Getting %d workers, avoid list: %v", number, avoidList)
+	// log.Printf("[Master]: Getting %d workers, avoid list len: %d", number, len(avoidList))
 
 	// Wait for workers to be added
 	for len(WorkerInfoMap) < 1 {
