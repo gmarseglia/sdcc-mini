@@ -25,8 +25,7 @@ var (
 func setupFields() {
 	// Setup WorkerPort
 	utils.SetupFieldOptional(worker.HostAddr, "HostAddr", utils.GetOutboundIP().String())
-	utils.SetupFieldOptional(worker.HostPort, "HostPort", "55557")
-	worker.HostFullAddr = fmt.Sprintf("%s:%s", *worker.HostAddr, *worker.HostPort)
+	utils.SetupFieldOptional(worker.HostPort, "HostPort", "0")
 	utils.SetupFieldMandatory(worker.MasterAddr, "MasterAddr", func() {
 		log.Printf("[Main]: MasterAddr is a mandatory field.")
 		exit()
@@ -59,10 +58,13 @@ func main() {
 
 	setupFields()
 
+	// Channel to comunicate the host port
+	portChan := make(chan string)
+
 	// Activate the Back Server
 	wg.Add(1)
 	go func() {
-		err := back.StartServer()
+		err := back.StartServer(portChan)
 		if err != nil {
 			exit()
 		}
@@ -78,7 +80,7 @@ func main() {
 	}()
 
 	// notify master
-	err := worker.NotifyWorkerActive()
+	err := worker.NotifyWorkerActive(portChan)
 	if err != nil {
 		stopComponentsAndExit("Master unreachable")
 	}

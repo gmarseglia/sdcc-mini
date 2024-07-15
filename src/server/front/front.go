@@ -179,7 +179,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 				addr := workersMap[i].Info.WorkerAddress
 				workersMapsLock.RUnlock()
 
-				log.Printf("[Front]: Sending %d.%d (%v) to %s", id, i, indexesMap[i], addr)
+				log.Printf("[Front]: Sending %d.%d len(%v)=%d  to %s", id, i, indexesMap[i], len(backRequestMap[i].Kernel), addr)
 
 				// Set up a connection to the gRPC server
 				conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -248,7 +248,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 				}
 
 				// Set completed
-				log.Printf("[Front]: Received %d.%d (%v) to %s", id, i, indexesMap[i], addr)
+				log.Printf("[Front]: Received %d.%d len(%v)=%d from %s", id, i, indexesMap[i], len(WorkerResponse.GetResult()), addr)
 				completeBlocksLock.Lock()
 				newCompletedBlocks := indexesMap[i]
 				for j := 0; j < len(newCompletedBlocks); j++ {

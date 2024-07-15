@@ -279,7 +279,7 @@ func listen() (net.Listener, error) {
 	return lis, nil
 }
 
-func StartServer() error {
+func StartServer(portChan chan string) error {
 	// Listen
 	// find free port and listen
 	workerListener, err := listen()
@@ -287,7 +287,11 @@ func StartServer() error {
 		log.Printf("[Back server]: Failed to listen.\nMore: %v", err)
 		return err
 	}
+	HostPort := fmt.Sprintf("%v", workerListener.Addr().(*net.TCPAddr).Port)
 	log.Printf("[Back server]: Back server listening at port: %s", HostPort)
+
+	// Comunicate port to worker-component
+	portChan <- HostPort
 
 	// create a new server
 	s = grpc.NewServer()

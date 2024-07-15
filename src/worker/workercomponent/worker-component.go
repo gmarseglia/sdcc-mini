@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	pb "mini/proto"
 	"mini/worker/back"
@@ -44,12 +45,16 @@ func dialServerAndSetClient() error {
 	return nil
 }
 
-func NotifyWorkerActive() error {
+func NotifyWorkerActive(portChan chan string) error {
 	// Dial master
 	err := dialServerAndSetClient()
 	if err != nil {
 		return err
 	}
+
+	// Get port from back
+	HostPort := <-portChan
+	HostFullAddr = fmt.Sprintf("%s:%s", *HostAddr, HostPort)
 
 	// Save workerAddr
 	log.Printf("[Worker]: Address to be advertised to master: %s\n", HostFullAddr)
