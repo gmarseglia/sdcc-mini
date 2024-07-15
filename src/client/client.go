@@ -28,6 +28,12 @@ var (
 	FrontPort    = flag.String("FrontPort", "", "The port of the master service.")
 	RequestCount = flag.String("RequestCount", "", "The number of requests to send.")
 	Verbose      = flag.Bool("Verbose", false, "Enable verbose output.")
+	TargetSize   = flag.Int("TargetSize", -1, "The target size of the image.")
+	KernelNum    = flag.Int("KernelNum", -1, "The number of kernels.")
+	KernelSize   = flag.Int("KernelSize", -1, "The size of the kernel.")
+	AvgPoolSize  = flag.Int("AvgPoolSize", -1, "The size of the average pooling.")
+	UseSigmoid   = flag.Bool("UseSigmoid", false, "Use sigmoid function.")
+	RandomValues = flag.Bool("RandomValues", false, "Use random values.")
 	counter      int
 	counterLock  sync.Mutex
 	wg           sync.WaitGroup
@@ -41,6 +47,13 @@ func setupFields() {
 	})
 	utils.SetupFieldOptional(FrontPort, "FrontPort", "55555")
 	utils.SetupFieldOptional(RequestCount, "RequestCount", "1")
+	utils.SetupFieldBool(Verbose, "Verbose")
+	utils.SetupFieldInt(false, TargetSize, "TargetSize", 500, nil)
+	utils.SetupFieldInt(false, KernelNum, "KernelNum", 180, nil)
+	utils.SetupFieldInt(false, KernelSize, "KernelSize", 3, nil)
+	utils.SetupFieldInt(false, AvgPoolSize, "AvgPoolSize", 500, nil)
+	utils.SetupFieldBool(UseSigmoid, "UseSigmoid")
+	utils.SetupFieldBool(RandomValues, "RandomValues")
 }
 
 func exit() {
@@ -56,17 +69,19 @@ func convolutionalRun(param int) {
 	counterLock.Unlock()
 
 	// Settings
-	targetSize := 500
-	kernelNum := 1800
-	kernelSize := 3
-	avgPoolSize := targetSize
+	targetSize := *TargetSize
+	kernelNum := *KernelNum
+	kernelSize := *KernelSize
+	avgPoolSize := *AvgPoolSize
 	useKernels := kernelSize > 0
-	useSigmoid := true
+	useSigmoid := *UseSigmoid
 
 	exptecedSize := max(
 		(targetSize*targetSize*4)+(kernelSize*kernelSize*kernelNum)*4,
 		targetSize*targetSize*kernelNum*4/(avgPoolSize*avgPoolSize))
 
+	log.Printf("[Client]: Request #%d started. Target size: %d, Kernel size: %d, Kernel number: %d, Avg Pool Size: %d, Use Kernels: %v, Use Sigmoid: %v",
+		id, targetSize, kernelSize, kernelNum, avgPoolSize, useKernels, useSigmoid)
 	log.Printf("[Client]: Request #%d -> Expected size: %d, Expected results: %d", id, exptecedSize, kernelNum)
 
 	if exptecedSize > msgMaxSize {
@@ -78,11 +93,10 @@ func convolutionalRun(param int) {
 	// Produce the request
 	frontRequest := &pb.ConvolutionalLayerFrontRequest{}
 
-	target := utils.GenerateRandomMatrix(targetSize, targetSize)
+	target := utils.GenerateMatrix(targetSize, targetSize, *RandomValues, 1)
 	frontRequest.Target = utils.MatrixToProto(target)
 	for i := 0; i < kernelNum; i++ {
-		frontRequest.Kernel = append(frontRequest.Kernel, utils.MatrixToProto(utils.GenerateRandomMatrix(kernelSize, kernelSize)))
-		// utils.PrettyPrint(fmt.Sprintf("Kernel %d", i), utils.ProtoToMatrix(frontRequest.Kernel[i]))
+		frontRequest.Kernel = append(frontRequest.Kernel, utils.MatrixToProto(utils.GenerateMatrix(kernelSize, kernelSize, *RandomValues, 1)))
 	}
 	frontRequest.AvgPoolSize = int32(avgPoolSize)
 	frontRequest.UseKernels = useKernels

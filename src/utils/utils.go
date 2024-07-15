@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
@@ -89,6 +90,13 @@ func SetupFieldInt(mandatory bool, field *int, envName string, defaultValue int,
 	}
 }
 
+func SetupFieldBool(field *bool, envName string) {
+	if !*field {
+		_, found := os.LookupEnv(envName)
+		*field = found
+	}
+}
+
 func PrettyPrint(title string, matrix [][]float32) {
 	// Print the matrix with pretty formatting
 	fmt.Println(title)
@@ -139,6 +147,21 @@ func GenerateRandomMatrix(height int, width int) [][]float32 {
 		for j := 0; j < width; j++ {
 			// result[i][j] = float32(rand.Float32()*2 - 1)
 			result[i][j] = float32(1)
+		}
+	}
+	return result
+}
+
+func GenerateMatrix(height int, width int, random bool, value float32) [][]float32 {
+	result := make([][]float32, height)
+	for i := 0; i < height; i++ {
+		result[i] = make([]float32, width)
+		for j := 0; j < width; j++ {
+			if random {
+				result[i][j] = float32(rand.Float32()*2 - 1)
+			} else {
+				result[i][j] = value
+			}
 		}
 	}
 	return result

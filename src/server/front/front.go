@@ -95,7 +95,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	var actualParallelWorkers int
 	var actualReplicationGrade int
 	if in.GetUseKernels() {
-		actualParallelWorkers = min(*ParallelWorkers, master.GetWorkersLen(), len(in.Kernel))
+		actualParallelWorkers = max(min(*ParallelWorkers, master.GetWorkersLen(), len(in.Kernel)), 1)
 	} else {
 		actualParallelWorkers = 1
 	}
