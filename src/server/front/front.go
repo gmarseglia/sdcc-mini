@@ -72,8 +72,20 @@ func setReady(workersMapsLock *sync.RWMutex, workersMap map[int]ActiveWorker, i 
 	workersMapsLock.Unlock()
 }
 
+func readWorkersMap(workersMapsLock *sync.RWMutex, workersMap map[int]ActiveWorker, i int) ActiveWorker {
+	workersMapsLock.RLock()
+	defer workersMapsLock.RUnlock()
+	return workersMap[i]
+}
+
+func writeWorkersMap(workersMapsLock *sync.RWMutex, workersMap map[int]ActiveWorker, i int, entry ActiveWorker) {
+	workersMapsLock.Lock()
+	defer workersMapsLock.Unlock()
+	workersMap[i] = entry
+}
+
 func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.ConvolutionalLayerFrontRequest) (*pb.ConvolutionalLayerFrontReply, error) {
-	// generate ID and InnerID
+	// generate Request ID
 	counterLock.Lock()
 	counter += 1
 	var id int32 = counter
@@ -91,7 +103,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 
 	log.Printf("[Front]: Request #%d started. Parallel workers: %d, Replication grade: %d", id, actualParallelWorkers, actualReplicationGrade)
 
-	// Split kernels into blocks
+	// Split the kernels into blocks
 	kernelsMap := make(map[int][]*pb.Matrix)
 	var kernelBlockSize int = int(math.Floor(float64(len(in.Kernel)) / float64(actualParallelWorkers)))
 	for i := 0; i < actualParallelWorkers-1; i++ {
@@ -99,7 +111,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	}
 	kernelsMap[actualParallelWorkers-1] = in.Kernel[(actualParallelWorkers-1)*kernelBlockSize : len(in.Kernel)]
 
-	// Join blocks into splits
+	// Join blocks into splits using the indexes
 	indexesMap := make(map[int][]int)
 	backRequestMap := make(map[int]*pb.ConvolutionalLayerBackRequest)
 	for i := 0; i < actualParallelWorkers; i++ {
@@ -125,7 +137,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 			InnerID:     int32(i)}
 	}
 
-	// Get first workers
+	// Get first n workers
 	workersMapsLock := sync.RWMutex{}
 	workers := master.GetWorkers(actualParallelWorkers, nil)
 	workersMap := make(map[int]ActiveWorker)
@@ -141,13 +153,15 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	// time the call
 	startTime := time.Now()
 
-	successChan := make(chan int)
+	// Initialize channels
+	successChan := make(chan int, actualParallelWorkers)
 	replaceChan := make(chan int)
 	fatalChannel := make(chan error)
 	readyChan := make([]chan bool, actualParallelWorkers)
 	for i := 0; i < actualParallelWorkers; i++ {
 		readyChan[i] = make(chan bool)
 	}
+	finalChan := make(chan error)
 
 	// Initialize completedBlocks and completedResult
 	completeBlocksLock := sync.RWMutex{}
@@ -157,17 +171,65 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 	}
 	completedResult := make([]*pb.Matrix, len(in.Kernel))
 
-	// For each part
+	wg := &sync.WaitGroup{}
+	wg.Add(actualParallelWorkers)
+
+	// Once for request, launch a gouroutine that will manage the worker go routines
+	go func() {
+		for {
+			select {
+			case innerID := <-successChan:
+				log.Printf("[Front]: Completed %d.%d", id, innerID)
+				// Check if all completed
+				allCompleted := true
+				completeBlocksLock.RLock()
+				for i := 0; i < actualParallelWorkers; i++ {
+					if !completedBlocks[i] {
+						allCompleted = false
+						break
+					}
+				}
+				completeBlocksLock.RUnlock()
+
+				if allCompleted {
+					// Cancel pending requests
+					finalChan <- nil
+					cancelAllActiveWorkers(&workersMapsLock, workersMap, id)
+					log.Printf("[Front]: Tearing down %d due to success", id)
+					wg.Wait()
+					log.Printf("[Front]: Teared down %d", id)
+					return
+				}
+
+			case replaceIndex := <-replaceChan:
+				log.Printf("[Front]: Replacing %d.%d", id, replaceIndex)
+				newWorker := master.GetWorkers(1, workers)
+				aw := readWorkersMap(&workersMapsLock, workersMap, replaceIndex)
+				aw.Info = newWorker[0]
+				aw.Ready = true
+				writeWorkersMap(&workersMapsLock, workersMap, replaceIndex, aw)
+				log.Printf("[Front]: Replaced %d.%d with %s", id, replaceIndex, newWorker[0].WorkerAddress)
+				readyChan[replaceIndex] <- true
+			case err := <-fatalChannel:
+				// Cancel pending requests
+				cancelAllActiveWorkers(&workersMapsLock, workersMap, id)
+				finalChan <- err
+				log.Printf("[Front]: Tearing down %d due to fatal failure", id)
+				wg.Wait()
+				log.Printf("[Front]: Teared down %d", id)
+				return
+			}
+		}
+	}()
+
+	// For each part launch a goroutine that will handle comunication with the worker
 	for i := 0; i < actualParallelWorkers; i++ {
 		go func(i int) {
 			// Call RPC to worker
-			for !checkCompleted(indexesMap[i], completedBlocks, &completeBlocksLock) {
-				// Select the worker
-				var activeWorker ActiveWorker
-
-				workersMapsLock.RLock()
-				ready := workersMap[i].Ready
-				workersMapsLock.RUnlock()
+			for {
+				// Get active worker
+				aw := readWorkersMap(&workersMapsLock, workersMap, i)
+				ready := aw.Ready
 
 				// Wait for ready, in case of replacing
 				if !ready {
@@ -175,9 +237,16 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 					<-readyChan[i]
 				}
 
-				workersMapsLock.RLock()
-				addr := workersMap[i].Info.WorkerAddress
-				workersMapsLock.RUnlock()
+				// Check if the request has been completed
+				if checkCompleted(indexesMap[i], completedBlocks, &completeBlocksLock) {
+					log.Printf("[Front]: Exiting due to completion %d.%d", id, i)
+					wg.Done()
+					return
+				}
+
+				// Acquire worker address
+				aw = readWorkersMap(&workersMapsLock, workersMap, i)
+				addr := aw.Info.WorkerAddress
 
 				log.Printf("[Front]: Sending %d.%d len(%v)=%d  to %s", id, i, indexesMap[i], len(backRequestMap[i].Kernel), addr)
 
@@ -195,38 +264,27 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 				// create the client object
 				c := pb.NewBackClient(conn)
 
-				workersMapsLock.RLock()
-				activeWorker = workersMap[i]
-				workersMapsLock.RUnlock()
-				activeWorker.Client = &c
-				workersMapsLock.Lock()
-				workersMap[i] = activeWorker
-				workersMapsLock.Unlock()
+				// Write client to worker map to be used to cancel
+				aw = readWorkersMap(&workersMapsLock, workersMap, i)
+				aw.Client = &c
+				writeWorkersMap(&workersMapsLock, workersMap, i, aw)
 
 				// create the context
 				ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 				defer cancel()
 
 				// Set workers as active
-				workersMapsLock.RLock()
-				activeWorker = workersMap[i]
-				workersMapsLock.RUnlock()
-				activeWorker.Active = true
-				workersMapsLock.Lock()
-				workersMap[i] = activeWorker
-				workersMapsLock.Unlock()
+				aw = readWorkersMap(&workersMapsLock, workersMap, i)
+				aw.Active = true
+				writeWorkersMap(&workersMapsLock, workersMap, i, aw)
 
 				// contact the server
 				WorkerResponse, err := c.ConvolutionalLayer(ctxInternal, backRequestMap[i])
 
 				// Set workers as inactive
-				workersMapsLock.RLock()
-				activeWorker = workersMap[i]
-				workersMapsLock.RUnlock()
-				activeWorker.Active = false
-				workersMapsLock.Lock()
-				workersMap[i] = activeWorker
-				workersMapsLock.Unlock()
+				aw = readWorkersMap(&workersMapsLock, workersMap, i)
+				aw.Active = false
+				writeWorkersMap(&workersMapsLock, workersMap, i, aw)
 
 				// Check if error
 				if err != nil {
@@ -235,16 +293,20 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 					if ok && s.Code() == codes.ResourceExhausted {
 						log.Printf("[Front]: Response: %d.%d: Resource exhausted error occurred: %s by %s.", id, i, s.Message(), addr)
 						setReady(&workersMapsLock, workersMap, i, false)
+						wg.Done()
 						fatalChannel <- err
+						return
 					} else if ok && s.Code() == codes.Canceled {
 						log.Printf("[Front]: Cancelled %d.%d (%v) to %s", id, i, indexesMap[i], addr)
+						wg.Done()
+						return
 					} else {
 						log.Printf("[Front]: %s is unreachable: %v", addr, err)
 						master.RemoveWorker(addr, "unreachable")
 						setReady(&workersMapsLock, workersMap, i, false)
 						replaceChan <- i
+						continue
 					}
-					continue
 				}
 
 				// Set completed
@@ -255,6 +317,7 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 					completedBlockIndex := newCompletedBlocks[j]
 					completedBlocks[completedBlockIndex] = true
 
+					// Write completed kernels to completedResults
 					var begin int = completedBlockIndex * kernelBlockSize
 					var end int
 					if completedBlockIndex == actualParallelWorkers-1 {
@@ -269,64 +332,34 @@ func (s *FrontServer) ConvolutionalLayer(ctx context.Context, in *pb.Convolution
 				completeBlocksLock.Unlock()
 
 				// Notify outer
+				wg.Done()
 				successChan <- i
+				return
 			}
 		}(i)
 	}
 
-	for {
-		select {
-		// Wait for completion
-		case <-successChan:
-			// Check if all completed
-			allCompleted := true
-			completeBlocksLock.RLock()
-			for i := 0; i < actualParallelWorkers; i++ {
-				if !completedBlocks[i] {
-					allCompleted = false
-					break
-				}
-			}
-			completeBlocksLock.RUnlock()
+	outcoume := <-finalChan
+	if outcoume == nil {
+		log.Printf("[Front]: Response: %d complete in %d ms", id, time.Since(startTime).Milliseconds())
+		return &pb.ConvolutionalLayerFrontReply{ID: id, Result: completedResult}, nil
+	} else {
+		log.Printf("[Front]: Response: %d failed in %d ms", id, time.Since(startTime).Milliseconds())
+		return nil, outcoume
+	}
+}
 
-			if allCompleted {
-				// Cancel pending requests
-				for i := 0; i < actualParallelWorkers; i++ {
-					if workersMap[i].Active {
-						go func(i int) {
-							// create the context
-							ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
-							defer cancel()
-							c := *workersMap[i].Client
-							c.Cancel(ctxInternal, &pb.CancelRequest{ID: id, InnerID: int32(i)})
-						}(i)
-					}
-				}
-
-				log.Printf("[Front]: Response: %d complete in %d ms", id, time.Since(startTime).Milliseconds())
-				return &pb.ConvolutionalLayerFrontReply{ID: id, Result: completedResult}, nil
-			}
-
-		case replaceIndex := <-replaceChan:
-			log.Printf("[Front]: Replacing %d.%d", id, replaceIndex)
-			newWorker := master.GetWorkers(1, workers)
-
-			workersMapsLock.RLock()
-			workerMapEntry := workersMap[replaceIndex]
-			workersMapsLock.RUnlock()
-
-			workerMapEntry.Info = newWorker[0]
-			workerMapEntry.Ready = true
-
-			workersMapsLock.Lock()
-			workersMap[replaceIndex] = workerMapEntry
-			workersMapsLock.Unlock()
-
-			log.Printf("[Front]: Replaced %d.%d with %s", id, replaceIndex, newWorker[0].WorkerAddress)
-			readyChan[replaceIndex] <- true
-
-		case err := <-fatalChannel:
-			return nil, err
+func cancelAllActiveWorkers(workersMapsLock *sync.RWMutex, workersMap map[int]ActiveWorker, id int32) {
+	for i := 0; i < len(workersMap); i++ {
+		aw := readWorkersMap(workersMapsLock, workersMap, i)
+		if aw.Active {
+			go func(i int) {
+				// create the context
+				ctxInternal, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+				defer cancel()
+				c := *aw.Client
+				c.Cancel(ctxInternal, &pb.CancelRequest{ID: id, InnerID: int32(i)})
+			}(i)
 		}
 	}
 }
