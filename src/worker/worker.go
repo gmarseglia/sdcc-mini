@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	pb "mini/proto"
 	"mini/utils"
 	"mini/worker/back"
 	worker "mini/worker/workercomponent"
@@ -40,7 +41,7 @@ func stopComponentsAndExit(message string) {
 	log.Printf("[Main]: %s. Begin components stop.", message)
 
 	go func() {
-		worker.PingServer(10, 0, true)
+		worker.PingServer(10, 0, pb.PingType_DEACTIVATE)
 	}()
 	time.Sleep(time.Millisecond * 100)
 
@@ -86,9 +87,18 @@ func main() {
 	}()
 
 	// notify master
-	err := worker.NotifyWorkerActive(portChan)
-	if err != nil {
-		stopComponentsAndExit("Master unreachable")
+	tries := 0
+	for {
+		err := worker.NotifyWorkerActive(portChan)
+		if err != nil {
+			tries += 1
+			time.Sleep(time.Second * time.Duration(2*tries))
+			if tries > 7 {
+				stopComponentsAndExit("Master unreachable")
+			}
+		} else {
+			break
+		}
 	}
 
 	// infite loop with server pings
@@ -101,7 +111,7 @@ func main() {
 		} else {
 			percentage = result[0]
 		}
-		err := worker.PingServer(*PingTimeout*10, float32(percentage*(*FakeCPUScale)), false)
+		err := worker.PingServer(*PingTimeout*10, float32(percentage*(*FakeCPUScale)), pb.PingType_PING)
 		if err != nil {
 			stopComponentsAndExit("Ping failed")
 		}

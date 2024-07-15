@@ -19,7 +19,6 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Front_Choice_FullMethodName             = "/mini.Front/Choice"
 	Front_ConvolutionalLayer_FullMethodName = "/mini.Front/ConvolutionalLayer"
 )
 
@@ -27,8 +26,6 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FrontClient interface {
-	// #TODO: remove if working
-	Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error)
 	ConvolutionalLayer(ctx context.Context, in *ConvolutionalLayerFrontRequest, opts ...grpc.CallOption) (*ConvolutionalLayerFrontReply, error)
 }
 
@@ -38,15 +35,6 @@ type frontClient struct {
 
 func NewFrontClient(cc grpc.ClientConnInterface) FrontClient {
 	return &frontClient{cc}
-}
-
-func (c *frontClient) Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error) {
-	out := new(ChoiceReply)
-	err := c.cc.Invoke(ctx, Front_Choice_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *frontClient) ConvolutionalLayer(ctx context.Context, in *ConvolutionalLayerFrontRequest, opts ...grpc.CallOption) (*ConvolutionalLayerFrontReply, error) {
@@ -62,8 +50,6 @@ func (c *frontClient) ConvolutionalLayer(ctx context.Context, in *ConvolutionalL
 // All implementations must embed UnimplementedFrontServer
 // for forward compatibility
 type FrontServer interface {
-	// #TODO: remove if working
-	Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error)
 	ConvolutionalLayer(context.Context, *ConvolutionalLayerFrontRequest) (*ConvolutionalLayerFrontReply, error)
 	mustEmbedUnimplementedFrontServer()
 }
@@ -72,9 +58,6 @@ type FrontServer interface {
 type UnimplementedFrontServer struct {
 }
 
-func (UnimplementedFrontServer) Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Choice not implemented")
-}
 func (UnimplementedFrontServer) ConvolutionalLayer(context.Context, *ConvolutionalLayerFrontRequest) (*ConvolutionalLayerFrontReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConvolutionalLayer not implemented")
 }
@@ -89,24 +72,6 @@ type UnsafeFrontServer interface {
 
 func RegisterFrontServer(s grpc.ServiceRegistrar, srv FrontServer) {
 	s.RegisterService(&Front_ServiceDesc, srv)
-}
-
-func _Front_Choice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChoiceBiRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(FrontServer).Choice(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Front_Choice_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FrontServer).Choice(ctx, req.(*ChoiceBiRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Front_ConvolutionalLayer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -135,10 +100,6 @@ var Front_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*FrontServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Choice",
-			Handler:    _Front_Choice_Handler,
-		},
-		{
 			MethodName: "ConvolutionalLayer",
 			Handler:    _Front_ConvolutionalLayer_Handler,
 		},
@@ -149,7 +110,6 @@ var Front_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	Back_Cancel_FullMethodName             = "/mini.Back/Cancel"
-	Back_Choice_FullMethodName             = "/mini.Back/Choice"
 	Back_ConvolutionalLayer_FullMethodName = "/mini.Back/ConvolutionalLayer"
 )
 
@@ -157,9 +117,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BackClient interface {
-	// #TODO: remove if working
 	Cancel(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*CancelReply, error)
-	Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error)
 	ConvolutionalLayer(ctx context.Context, in *ConvolutionalLayerBackRequest, opts ...grpc.CallOption) (*ConvolutionalLayerBackReply, error)
 }
 
@@ -180,15 +138,6 @@ func (c *backClient) Cancel(ctx context.Context, in *CancelRequest, opts ...grpc
 	return out, nil
 }
 
-func (c *backClient) Choice(ctx context.Context, in *ChoiceBiRequest, opts ...grpc.CallOption) (*ChoiceReply, error) {
-	out := new(ChoiceReply)
-	err := c.cc.Invoke(ctx, Back_Choice_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *backClient) ConvolutionalLayer(ctx context.Context, in *ConvolutionalLayerBackRequest, opts ...grpc.CallOption) (*ConvolutionalLayerBackReply, error) {
 	out := new(ConvolutionalLayerBackReply)
 	err := c.cc.Invoke(ctx, Back_ConvolutionalLayer_FullMethodName, in, out, opts...)
@@ -202,9 +151,7 @@ func (c *backClient) ConvolutionalLayer(ctx context.Context, in *ConvolutionalLa
 // All implementations must embed UnimplementedBackServer
 // for forward compatibility
 type BackServer interface {
-	// #TODO: remove if working
 	Cancel(context.Context, *CancelRequest) (*CancelReply, error)
-	Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error)
 	ConvolutionalLayer(context.Context, *ConvolutionalLayerBackRequest) (*ConvolutionalLayerBackReply, error)
 	mustEmbedUnimplementedBackServer()
 }
@@ -215,9 +162,6 @@ type UnimplementedBackServer struct {
 
 func (UnimplementedBackServer) Cancel(context.Context, *CancelRequest) (*CancelReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
-}
-func (UnimplementedBackServer) Choice(context.Context, *ChoiceBiRequest) (*ChoiceReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Choice not implemented")
 }
 func (UnimplementedBackServer) ConvolutionalLayer(context.Context, *ConvolutionalLayerBackRequest) (*ConvolutionalLayerBackReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConvolutionalLayer not implemented")
@@ -253,24 +197,6 @@ func _Back_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Back_Choice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChoiceBiRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BackServer).Choice(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Back_Choice_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackServer).Choice(ctx, req.(*ChoiceBiRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Back_ConvolutionalLayer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ConvolutionalLayerBackRequest)
 	if err := dec(in); err != nil {
@@ -301,10 +227,6 @@ var Back_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Back_Cancel_Handler,
 		},
 		{
-			MethodName: "Choice",
-			Handler:    _Back_Choice_Handler,
-		},
-		{
 			MethodName: "ConvolutionalLayer",
 			Handler:    _Back_ConvolutionalLayer_Handler,
 		},
@@ -314,15 +236,13 @@ var Back_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	Master_NotifyActiveWorker_FullMethodName = "/mini.Master/NotifyActiveWorker"
-	Master_NotifyPing_FullMethodName         = "/mini.Master/NotifyPing"
+	Master_NotifyPing_FullMethodName = "/mini.Master/NotifyPing"
 )
 
 // MasterClient is the client API for Master service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterClient interface {
-	NotifyActiveWorker(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
 	NotifyPing(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingReply, error)
 }
 
@@ -332,15 +252,6 @@ type masterClient struct {
 
 func NewMasterClient(cc grpc.ClientConnInterface) MasterClient {
 	return &masterClient{cc}
-}
-
-func (c *masterClient) NotifyActiveWorker(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error) {
-	out := new(NotifyReply)
-	err := c.cc.Invoke(ctx, Master_NotifyActiveWorker_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *masterClient) NotifyPing(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingReply, error) {
@@ -356,7 +267,6 @@ func (c *masterClient) NotifyPing(ctx context.Context, in *PingRequest, opts ...
 // All implementations must embed UnimplementedMasterServer
 // for forward compatibility
 type MasterServer interface {
-	NotifyActiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error)
 	NotifyPing(context.Context, *PingRequest) (*PingReply, error)
 	mustEmbedUnimplementedMasterServer()
 }
@@ -365,9 +275,6 @@ type MasterServer interface {
 type UnimplementedMasterServer struct {
 }
 
-func (UnimplementedMasterServer) NotifyActiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NotifyActiveWorker not implemented")
-}
 func (UnimplementedMasterServer) NotifyPing(context.Context, *PingRequest) (*PingReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NotifyPing not implemented")
 }
@@ -382,24 +289,6 @@ type UnsafeMasterServer interface {
 
 func RegisterMasterServer(s grpc.ServiceRegistrar, srv MasterServer) {
 	s.RegisterService(&Master_ServiceDesc, srv)
-}
-
-func _Master_NotifyActiveWorker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NotifyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MasterServer).NotifyActiveWorker(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Master_NotifyActiveWorker_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).NotifyActiveWorker(ctx, req.(*NotifyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Master_NotifyPing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -427,10 +316,6 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "mini.Master",
 	HandlerType: (*MasterServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "NotifyActiveWorker",
-			Handler:    _Master_NotifyActiveWorker_Handler,
-		},
 		{
 			MethodName: "NotifyPing",
 			Handler:    _Master_NotifyPing_Handler,

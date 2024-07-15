@@ -34,50 +34,70 @@ type WorkerInfo struct {
 	LastPing      time.Time
 }
 
-// SayHello implementation
-func (s *MasterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequest) (*pb.NotifyReply, error) {
-	log.Printf("[Master]: Notification from %s", in.GetWorkerAddress())
-
-	// Add worker
-	_, exists := WorkerInfoMap[in.GetWorkerAddress()]
-	if exists {
-		return &pb.NotifyReply{Result: "ALREADY ADDED"}, nil
-	} else {
-		WorkerInfoMapLock.Lock()
-		WorkerInfoMap[in.GetWorkerAddress()] = WorkerInfo{
-			WorkerAddress: in.GetWorkerAddress(),
-			Cost:          float32(math.Inf(1)),
-			LastPing:      time.Now(),
-		}
-		workerChannel <- len(WorkerInfoMap)
-		WorkerInfoMapLock.Unlock()
-		log.Printf("[Master]: Added worker %s", in.GetWorkerAddress())
-		return &pb.NotifyReply{Result: "NOTIFICATION OK"}, nil
+func getCPUMetric(gotCPU float32) float32 {
+	if gotCPU > 0 {
+		return gotCPU
 	}
+
+	// Get avg CPU usage
+	var sum float32 = 0
+	found := 0
+	for _, info := range WorkerInfoMap {
+		if info.UsageCPU > 0 {
+			sum += info.UsageCPU
+			found++
+		}
+	}
+	if found == 0 {
+		return 1
+	}
+	return sum / float32(found)
 }
 
 // NotifyPing implementation
 func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
+	log.Printf("[Master]: Notification from %s of type %s", in.GetWorkerAddress(), in.GetType())
 
-	if in.GetTerminate() {
-		RemoveWorker(in.GetWorkerAddress(), "terminate")
-	} else {
+	switch in.Type {
+	case pb.PingType_ACTIVATE:
+		// Add worker
+		_, exists := WorkerInfoMap[in.GetWorkerAddress()]
+		if exists {
+			return &pb.PingReply{Result: "ALREADY ADDED"}, nil
+		} else {
+			WorkerInfoMapLock.Lock()
+			WorkerInfoMap[in.GetWorkerAddress()] = WorkerInfo{
+				WorkerAddress: in.GetWorkerAddress(),
+				Cost:          float32(math.Inf(1)),
+				LastPing:      time.Now(),
+			}
+			workerChannel <- len(WorkerInfoMap)
+			WorkerInfoMapLock.Unlock()
+			log.Printf("[Master]: Added worker %s", in.GetWorkerAddress())
+			return &pb.PingReply{Result: "OK"}, nil
+		}
+
+	case pb.PingType_PING:
 		// Update worker info
-		cost := in.GetUsageCPU() * (float32(in.QueueSize) + 1)
+		cost := getCPUMetric(in.GetUsageCPU()) * (float32(in.QueueSize) + 1)
 		WorkerInfoMapLock.Lock()
 		winfo := WorkerInfoMap[in.GetWorkerAddress()]
+		winfo.WorkerAddress = in.GetWorkerAddress()
 		winfo.QueueSize = in.GetQueueSize()
 		winfo.UsageCPU = in.GetUsageCPU()
 		winfo.Cost = cost
 		winfo.LastPing = time.Now()
 		WorkerInfoMap[in.GetWorkerAddress()] = winfo
 		WorkerInfoMapLock.Unlock()
+		return &pb.PingReply{Result: "PING OK"}, nil
+
+	case pb.PingType_DEACTIVATE:
+		RemoveWorker(in.GetWorkerAddress(), "terminate")
+		return &pb.PingReply{Result: "PING OK"}, nil
+
+	default:
+		return &pb.PingReply{Result: "UNKNOWN TYPE"}, nil
 	}
-
-	// log.Printf("[Master]: Cost of worker %s: %.2f", in.GetWorkerAddress(), cost)
-
-	// send response
-	return &pb.PingReply{Result: "PING OK"}, nil
 }
 
 func RemoveWorker(targetWorkerAddr string, cause string) {

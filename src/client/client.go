@@ -48,34 +48,6 @@ func exit() {
 	os.Exit(0)
 }
 
-func choice() {
-	// Internal ID
-	counterLock.Lock()
-	counter++
-	id := counter
-	counterLock.Unlock()
-
-	// create the context
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	// time the call
-	startTime := time.Now()
-
-	log.Printf("[Client]: Request #%d sent.", id)
-
-	// contact the server
-	r, err := c.Choice(ctx, &pb.ChoiceBiRequest{Option1: "A", Option2: "B"})
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
-	}
-
-	// print the result
-	log.Printf("[Client]: Request #%d -> Response: (#%d , %s) in %d ms", id, r.GetReplyID(), r.GetOption(), time.Since(startTime).Milliseconds())
-
-	wg.Done()
-}
-
 func convolutionalRun(param int) {
 	// Internal ID
 	counterLock.Lock()

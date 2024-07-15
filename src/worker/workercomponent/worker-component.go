@@ -63,8 +63,13 @@ func NotifyWorkerActive(portChan chan string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
+	pingRequest := &pb.PingRequest{
+		WorkerAddress: HostFullAddr,
+	}
+
 	// contact the server
-	r, err := c.NotifyActiveWorker(ctx, &pb.NotifyRequest{WorkerAddress: HostFullAddr})
+	r, err := c.NotifyPing(ctx, pingRequest)
+
 	if err != nil {
 		log.Printf("[Worker]: Could not notify Master. More:\n%v", err)
 		return err
@@ -80,7 +85,7 @@ func NotifyWorkerActive(portChan chan string) error {
 	return nil
 }
 
-func PingServer(timeout int, usageCPU float32, terminate bool) error {
+func PingServer(timeout int, usageCPU float32, pingType pb.PingType) error {
 	// Dial master
 	err := dialServerAndSetClient()
 	if err != nil {
@@ -95,7 +100,7 @@ func PingServer(timeout int, usageCPU float32, terminate bool) error {
 		WorkerAddress: HostFullAddr,
 		QueueSize:     int32(back.Active),
 		UsageCPU:      usageCPU,
-		Terminate:     terminate,
+		Type:          pingType,
 	}
 
 	// contact the server

@@ -4,15 +4,13 @@ option go_package = "mini/proto";
 
 package mini;
 
-// #TODO: remove if working
-message ChoiceBiRequest {
-        string Option1 = 1;
-        string Option2 = 2;
+message CancelRequest {
+    int32 ID = 1;
+    int32 InnerID = 2;
 }
 
-message ChoiceReply {
-    string Option = 1;
-    int32 ReplyID = 2;
+message CancelReply {
+    string Result = 1;
 }
 
 message Matrix {
@@ -52,48 +50,33 @@ message ConvolutionalLayerBackReply {
     int32 InnerID = 3;
 }
 
+// Define an enum
+enum PingType {
+    ACTIVATE = 0;  // Default value
+    PING = 1;
+    DEACTIVATE = 2;
+}
+
 message PingRequest {
     string WorkerAddress = 1;
     int32 QueueSize = 2;
     float UsageCPU = 3;
-    bool Terminate = 4;
+    PingType Type = 4;
 }
 
 message PingReply {
     string Result = 1;
 }
 
-message NotifyRequest {
-    string WorkerAddress = 1;
-}
-
-message NotifyReply {
-    string Result = 1;
-}
-
-message CancelRequest {
-    int32 ID = 1;
-    int32 InnerID = 2;
-}
-
-message CancelReply {
-    string Result = 1;
-}
-
 service Front {
-    // #TODO: remove if working
-    rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
     rpc ConvolutionalLayer(ConvolutionalLayerFrontRequest) returns (ConvolutionalLayerFrontReply) {}
 }
 
 service Back {
-    // #TODO: remove if working
     rpc Cancel(CancelRequest) returns (CancelReply) {}
-    rpc Choice(ChoiceBiRequest) returns (ChoiceReply) {}
     rpc ConvolutionalLayer(ConvolutionalLayerBackRequest) returns (ConvolutionalLayerBackReply) {}
 }
 
 service Master {
-    rpc NotifyActiveWorker(NotifyRequest) returns (NotifyReply) {}
     rpc NotifyPing(PingRequest) returns (PingReply) {}
 }

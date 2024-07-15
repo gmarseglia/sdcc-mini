@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
 	pb "mini/proto"
 	"mini/utils"
 	"net"
@@ -24,9 +23,6 @@ var (
 	ActiveChannel      = make(chan int, 1000)
 	activeRequests     = make(map[CompositeID]bool)
 	activeRequestsLock sync.RWMutex
-	counter            int
-	counterLock        sync.Mutex
-	Prng               = rand.New(rand.NewSource(14))
 	s                  *grpc.Server
 )
 
@@ -37,38 +33,6 @@ type backServer struct {
 type CompositeID struct {
 	ID      int32
 	InnerID int32
-}
-
-// SayHello implements helloworld.GreeterServer
-func (s *backServer) Choice(ctx context.Context, in *pb.ChoiceBiRequest) (*pb.ChoiceReply, error) {
-	// signal as activated
-	Active += 1
-	ActiveChannel <- Active
-
-	// log response
-	counterLock.Lock()
-	counter += 1
-	replyID := counter
-	counterLock.Unlock()
-	log.Printf("[Back server]: Received request #%d", counter)
-
-	// sleep
-	utils.SimulatedCPUIntensiveFunction(1000, &Active, 1)
-
-	// randomly choose response
-	var response string
-	if Prng.Intn(2) == 0 {
-		response = in.GetOption1()
-	} else {
-		response = in.GetOption2()
-	}
-
-	// signal as deactivated
-	Active -= 1
-	ActiveChannel <- Active
-
-	// send response
-	return &pb.ChoiceReply{Option: response, ReplyID: int32(replyID)}, nil
 }
 
 func (s *backServer) Cancel(ctx context.Context, in *pb.CancelRequest) (*pb.CancelReply, error) {
