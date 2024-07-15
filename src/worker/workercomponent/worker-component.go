@@ -80,7 +80,7 @@ func NotifyWorkerActive(portChan chan string) error {
 	return nil
 }
 
-func PingServer(timeout int, usageCPU float32) error {
+func PingServer(timeout int, usageCPU float32, terminate bool) error {
 	// Dial master
 	err := dialServerAndSetClient()
 	if err != nil {
@@ -95,6 +95,7 @@ func PingServer(timeout int, usageCPU float32) error {
 		WorkerAddress: HostFullAddr,
 		QueueSize:     int32(back.Active),
 		UsageCPU:      usageCPU,
+		Terminate:     terminate,
 	}
 
 	// contact the server

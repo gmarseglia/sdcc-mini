@@ -38,6 +38,12 @@ func setupFields() {
 
 func stopComponentsAndExit(message string) {
 	log.Printf("[Main]: %s. Begin components stop.", message)
+
+	go func() {
+		worker.PingServer(10, 0, true)
+	}()
+	time.Sleep(time.Millisecond * 100)
+
 	back.StopServer(&wg)
 
 	wg.Wait()
@@ -89,7 +95,7 @@ func main() {
 	for {
 		// Prepare the request
 		percentages, _ := cpu.Percent(time.Second, false)
-		err := worker.PingServer(*PingTimeout*10, float32(percentages[0]*(*FakeCPUScale)))
+		err := worker.PingServer(*PingTimeout*10, float32(percentages[0]*(*FakeCPUScale)), false)
 		if err != nil {
 			stopComponentsAndExit("Ping failed")
 		}

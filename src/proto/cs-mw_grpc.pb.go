@@ -314,9 +314,8 @@ var Back_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	Master_NotifyActiveWorker_FullMethodName   = "/mini.Master/NotifyActiveWorker"
-	Master_NotifyDeactiveWorker_FullMethodName = "/mini.Master/NotifyDeactiveWorker"
-	Master_NotifyPing_FullMethodName           = "/mini.Master/NotifyPing"
+	Master_NotifyActiveWorker_FullMethodName = "/mini.Master/NotifyActiveWorker"
+	Master_NotifyPing_FullMethodName         = "/mini.Master/NotifyPing"
 )
 
 // MasterClient is the client API for Master service.
@@ -324,7 +323,6 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterClient interface {
 	NotifyActiveWorker(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
-	NotifyDeactiveWorker(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
 	NotifyPing(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingReply, error)
 }
 
@@ -345,15 +343,6 @@ func (c *masterClient) NotifyActiveWorker(ctx context.Context, in *NotifyRequest
 	return out, nil
 }
 
-func (c *masterClient) NotifyDeactiveWorker(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error) {
-	out := new(NotifyReply)
-	err := c.cc.Invoke(ctx, Master_NotifyDeactiveWorker_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *masterClient) NotifyPing(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingReply, error) {
 	out := new(PingReply)
 	err := c.cc.Invoke(ctx, Master_NotifyPing_FullMethodName, in, out, opts...)
@@ -368,7 +357,6 @@ func (c *masterClient) NotifyPing(ctx context.Context, in *PingRequest, opts ...
 // for forward compatibility
 type MasterServer interface {
 	NotifyActiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error)
-	NotifyDeactiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error)
 	NotifyPing(context.Context, *PingRequest) (*PingReply, error)
 	mustEmbedUnimplementedMasterServer()
 }
@@ -379,9 +367,6 @@ type UnimplementedMasterServer struct {
 
 func (UnimplementedMasterServer) NotifyActiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NotifyActiveWorker not implemented")
-}
-func (UnimplementedMasterServer) NotifyDeactiveWorker(context.Context, *NotifyRequest) (*NotifyReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NotifyDeactiveWorker not implemented")
 }
 func (UnimplementedMasterServer) NotifyPing(context.Context, *PingRequest) (*PingReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NotifyPing not implemented")
@@ -417,24 +402,6 @@ func _Master_NotifyActiveWorker_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Master_NotifyDeactiveWorker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NotifyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MasterServer).NotifyDeactiveWorker(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Master_NotifyDeactiveWorker_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterServer).NotifyDeactiveWorker(ctx, req.(*NotifyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Master_NotifyPing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PingRequest)
 	if err := dec(in); err != nil {
@@ -463,10 +430,6 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NotifyActiveWorker",
 			Handler:    _Master_NotifyActiveWorker_Handler,
-		},
-		{
-			MethodName: "NotifyDeactiveWorker",
-			Handler:    _Master_NotifyDeactiveWorker_Handler,
 		},
 		{
 			MethodName: "NotifyPing",

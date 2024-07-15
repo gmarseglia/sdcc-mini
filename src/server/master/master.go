@@ -58,16 +58,21 @@ func (s *MasterServer) NotifyActiveWorker(ctx context.Context, in *pb.NotifyRequ
 
 // NotifyPing implementation
 func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
-	// Update worker info
-	cost := in.GetUsageCPU() * (float32(in.QueueSize) + 1)
-	WorkerInfoMapLock.Lock()
-	winfo := WorkerInfoMap[in.GetWorkerAddress()]
-	winfo.QueueSize = in.GetQueueSize()
-	winfo.UsageCPU = in.GetUsageCPU()
-	winfo.Cost = cost
-	winfo.LastPing = time.Now()
-	WorkerInfoMap[in.GetWorkerAddress()] = winfo
-	WorkerInfoMapLock.Unlock()
+
+	if in.GetTerminate() {
+		RemoveWorker(in.GetWorkerAddress(), "terminate")
+	} else {
+		// Update worker info
+		cost := in.GetUsageCPU() * (float32(in.QueueSize) + 1)
+		WorkerInfoMapLock.Lock()
+		winfo := WorkerInfoMap[in.GetWorkerAddress()]
+		winfo.QueueSize = in.GetQueueSize()
+		winfo.UsageCPU = in.GetUsageCPU()
+		winfo.Cost = cost
+		winfo.LastPing = time.Now()
+		WorkerInfoMap[in.GetWorkerAddress()] = winfo
+		WorkerInfoMapLock.Unlock()
+	}
 
 	// log.Printf("[Master]: Cost of worker %s: %.2f", in.GetWorkerAddress(), cost)
 
@@ -76,15 +81,19 @@ func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.PingRequest) (*pb.
 }
 
 func RemoveWorker(targetWorkerAddr string, cause string) {
-	// delete worker address
-	WorkerInfoMapLock.Lock()
+	// Check if worker exists
+	WorkerInfoMapLock.RLock()
 	_, exists := WorkerInfoMap[targetWorkerAddr]
+	WorkerInfoMapLock.RUnlock()
+
+	// delete worker address
 	if exists {
+		WorkerInfoMapLock.Lock()
 		delete(WorkerInfoMap, targetWorkerAddr)
 		workerChannel <- len(WorkerInfoMap)
-		log.Printf("[Master]: Deleted worker %s due to %s", targetWorkerAddr, cause)
+		log.Printf("[Master]: Deleted %s due to %s", targetWorkerAddr, cause)
+		WorkerInfoMapLock.Unlock()
 	}
-	WorkerInfoMapLock.Unlock()
 }
 
 func GetWorkersLen() int {

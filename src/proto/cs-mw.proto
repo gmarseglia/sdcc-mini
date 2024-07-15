@@ -56,6 +56,7 @@ message PingRequest {
     string WorkerAddress = 1;
     int32 QueueSize = 2;
     float UsageCPU = 3;
+    bool Terminate = 4;
 }
 
 message PingReply {
@@ -94,6 +95,5 @@ service Back {
 
 service Master {
     rpc NotifyActiveWorker(NotifyRequest) returns (NotifyReply) {}
-    rpc NotifyDeactiveWorker(NotifyRequest) returns (NotifyReply) {}
     rpc NotifyPing(PingRequest) returns (PingReply) {}
 }
