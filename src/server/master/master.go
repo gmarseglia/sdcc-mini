@@ -108,14 +108,17 @@ func checkIn(target WorkerInfo, avoidList []WorkerInfo) bool {
 	}
 	for _, info := range avoidList {
 		if target.WorkerAddress == info.WorkerAddress {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 func GetWorkers(number int, avoidList []WorkerInfo) []WorkerInfo {
-	// log.Printf("[Master]: Getting %d workers, avoid list len: %d", number, len(avoidList))
+	log.Printf("[Master]: Getting %d workers, avoid list len: %d", number, len(avoidList))
+	for avoid := range avoidList {
+		log.Printf("[Master]: Avoiding %s", avoidList[avoid].WorkerAddress)
+	}
 
 	// Wait for workers to be added
 	for len(WorkerInfoMap) < 1 {
@@ -124,7 +127,9 @@ func GetWorkers(number int, avoidList []WorkerInfo) []WorkerInfo {
 
 	var cheapestWorkerInfo = make([]WorkerInfo, number)
 	for i := 0; i < number; i++ {
-		cheapestWorkerInfo[i] = WorkerInfo{Cost: float32(math.Inf(1))}
+		cheapestWorkerInfo[i] = WorkerInfo{
+			WorkerAddress: "N/A",
+			Cost:          float32(math.Inf(1))}
 	}
 
 	// Find the cheapest worker
@@ -133,25 +138,34 @@ func GetWorkers(number int, avoidList []WorkerInfo) []WorkerInfo {
 	found := 0
 	skipAvoidList := false
 	for found < number {
+		stepFound := 0
 		for _, info := range WorkerInfoMap {
+			log.Printf("[Master]: Worker %s cost: %.2f, skipAvoidList: %t, checkIn: %t", info.WorkerAddress, info.Cost, skipAvoidList, checkIn(info, avoidList))
 			for i := found; i < number; i++ {
 				if info.Cost <= cheapestWorkerInfo[i].Cost && (skipAvoidList || !checkIn(info, avoidList)) {
+					log.Printf("[Master]: Worker %s chosen for place %d", info.WorkerAddress, i)
+					stepFound++
 					// Translate the array
-					found++
 					copy(cheapestWorkerInfo[i+1:], cheapestWorkerInfo[i:number-1])
 					cheapestWorkerInfo[i] = info
-					break
+					i = number // break inner loop
+					for k, wi := range cheapestWorkerInfo {
+						log.Printf("[Master]: Cost of worker[%d] %s: %.2f", k, wi.WorkerAddress, wi.Cost)
+					}
 				}
 			}
-			if found == 0 {
-				skipAvoidList = true
-			}
 		}
+		if stepFound == 0 {
+			log.Printf("[Master]: No more workers found")
+			skipAvoidList = true
+		}
+		found += stepFound
 	}
 
 	// Increase the cost to avoid overuse on burst traffic
+	log.Printf("[Master]: Chosen %d workers:", number)
 	for i := 0; i < number; i++ {
-		// log.Printf("[Master]: Cost of worker %s: %.2f", cheapestWorkerInfo[i].WorkerAddress, cheapestWorkerInfo[i].Cost)
+		log.Printf("[Master]: Cost of worker[%d] %s: %.2f", i, cheapestWorkerInfo[i].WorkerAddress, cheapestWorkerInfo[i].Cost)
 		winfo := cheapestWorkerInfo[i]
 		winfo.Cost = float32(winfo.QueueSize+1) * (winfo.UsageCPU * 1.5)
 		WorkerInfoMap[cheapestWorkerInfo[i].WorkerAddress] = winfo
