@@ -56,10 +56,10 @@ func getCPUMetric(gotCPU float32) float32 {
 
 // NotifyPing implementation
 func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
-	log.Printf("[Master]: Notification from %s of type %s", in.GetWorkerAddress(), in.GetType())
 
 	switch in.Type {
 	case pb.PingType_ACTIVATE:
+		log.Printf("[Master]: Notification from %s of type %s", in.GetWorkerAddress(), in.GetType())
 		// Add worker
 		_, exists := WorkerInfoMap[in.GetWorkerAddress()]
 		if exists {
@@ -92,6 +92,7 @@ func (s *MasterServer) NotifyPing(ctx context.Context, in *pb.PingRequest) (*pb.
 		return &pb.PingReply{Result: "PING OK"}, nil
 
 	case pb.PingType_DEACTIVATE:
+		log.Printf("[Master]: Notification from %s of type %s", in.GetWorkerAddress(), in.GetType())
 		RemoveWorker(in.GetWorkerAddress(), "terminate")
 		return &pb.PingReply{Result: "PING OK"}, nil
 

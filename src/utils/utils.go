@@ -6,6 +6,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	pb "mini/proto"
@@ -67,6 +68,23 @@ func setupField(mandatory bool, field *string, envName string, defaultValue stri
 			} else {
 				*field = defaultValue
 			}
+		}
+	}
+}
+
+func SetupFieldInt(mandatory bool, field *int, envName string, defaultValue int, callback func()) {
+	if *field == -1 {
+		envRes := os.Getenv(envName)
+		num, err := strconv.Atoi(envRes)
+		if err != nil {
+			if mandatory {
+				callback()
+				return
+			} else {
+				*field = defaultValue
+			}
+		} else {
+			*field = num
 		}
 	}
 }

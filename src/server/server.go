@@ -21,6 +21,8 @@ var (
 func setupFields() {
 	utils.SetupFieldOptional(front.FrontPort, "FrontPort", "55555")
 	utils.SetupFieldOptional(master.MasterPort, "MasterPort", "55556")
+	utils.SetupFieldInt(false, front.ParallelWorkers, "ParallelWorkers", 2, nil)
+	utils.SetupFieldInt(false, front.ReplicationGrade, "ReplicationGrade", 2, nil)
 }
 
 func main() {

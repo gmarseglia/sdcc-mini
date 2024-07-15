@@ -21,8 +21,8 @@ import (
 
 var (
 	FrontPort        = flag.String("FrontPort", "", "The port for front service.")
-	ParallelWorkers  = flag.Int("ParallelWorkers", 2, "The number of parallel workers.")
-	ReplicationGrade = flag.Int("ReplicationGrade", 2, "The replication grade.")
+	ParallelWorkers  = flag.Int("ParallelWorkers", -1, "The number of parallel workers.")
+	ReplicationGrade = flag.Int("ReplicationGrade", -1, "The replication grade.")
 	counter          int32
 	counterLock      sync.Mutex
 	s                *grpc.Server
