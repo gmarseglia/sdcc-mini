@@ -94,8 +94,14 @@ func main() {
 	// infite loop with server pings
 	for {
 		// Prepare the request
-		percentages, _ := cpu.Percent(time.Second, false)
-		err := worker.PingServer(*PingTimeout*10, float32(percentages[0]*(*FakeCPUScale)), false)
+		percentage := 0.0
+		result, errCPU := cpu.Percent(time.Second, false)
+		if errCPU != nil {
+			percentage = -1.0
+		} else {
+			percentage = result[0]
+		}
+		err := worker.PingServer(*PingTimeout*10, float32(percentage*(*FakeCPUScale)), false)
 		if err != nil {
 			stopComponentsAndExit("Ping failed")
 		}
